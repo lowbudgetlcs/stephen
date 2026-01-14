@@ -1,85 +1,61 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
+    <div class="app-container">
+        <Sidebar />
+        <main
+            :class="[
+                'content',
+                {
+                    'sidebar-collapsed': isCollapsed,
+                    'sidebar-mobile': isMobile,
+                },
+            ]"
+        >
+            <router-view />
+        </main>
     </div>
-  </header>
-
-  <RouterView />
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+<script setup>
+import { computed } from "vue";
+import { useSidebarStore } from "@/stores/sidebar";
+import { storeToRefs } from "pinia";
+import Sidebar from "./components/Sidebar.vue";
+
+const sidebarStore = useSidebarStore();
+const { isCollapsed, isMobile } = storeToRefs(sidebarStore);
+</script>
+
+<style>
+body {
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
+.app-container {
     display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
+.content {
+    flex: 1;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+    margin-left: 250px;
+}
 
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.content.sidebar-collapsed {
+    margin-left: 60px;
+}
 
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
+.content.sidebar-mobile {
+    margin-left: 0;
+    transition: none;
+}
 
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+/* Mobile layout */
+@media (max-width: 768px) {
+    .content {
+        margin-left: 0;
+    }
 }
 </style>
