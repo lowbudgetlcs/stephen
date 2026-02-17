@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@remixicon/vue": "^4.8.0",
+    "axios": "^1.13.5",
     "pinia": "^3.0.4",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3"
