@@ -13,6 +13,7 @@ Name | Type | Description | Notes
 **endDate** | **string** |  | [default to undefined]
 **status** | [**EventStatus**](EventStatus.md) | The current event status. | [default to undefined]
 **eventGroupId** | **number** |  | [default to undefined]
+**eventStages** | [**Array&lt;EventStage&gt;**](EventStage.md) |  | [default to undefined]
 
 ## Example
 
@@ -28,6 +29,7 @@ const instance: EventDto = {
     endDate,
     status,
     eventGroupId,
+    eventStages,
 };
 ```
 

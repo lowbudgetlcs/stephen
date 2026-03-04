@@ -10,6 +10,7 @@ Name | Type | Description | Notes
 **startDate** | **string** |  | [default to undefined]
 **endDate** | **string** |  | [default to undefined]
 **status** | [**EventStatus**](EventStatus.md) | The intended starting status of the event. | [default to undefined]
+**eventStages** | [**Array&lt;EventStage&gt;**](EventStage.md) |  | [default to undefined]
 
 ## Example
 
@@ -22,6 +23,7 @@ const instance: CreateEventDto = {
     startDate,
     endDate,
     status,
+    eventStages,
 };
 ```
 

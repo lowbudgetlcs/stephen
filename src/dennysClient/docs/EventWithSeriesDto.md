@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **status** | [**EventStatus**](EventStatus.md) | The current event status. | [default to undefined]
 **eventGroupId** | **number** |  | [default to undefined]
 **series** | [**Array&lt;SeriesDto&gt;**](SeriesDto.md) |  | [default to undefined]
+**eventStages** | [**Array&lt;EventStage&gt;**](EventStage.md) |  | [default to undefined]
 
 ## Example
 
@@ -30,6 +31,7 @@ const instance: EventWithSeriesDto = {
     status,
     eventGroupId,
     series,
+    eventStages,
 };
 ```
 

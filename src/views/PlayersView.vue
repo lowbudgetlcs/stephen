@@ -15,7 +15,7 @@
             <tbody>
                 <tr v-for="player in players" :key="player.id">
                     <td>{{ player.id }}</td>
-                    <td>{{ player.primaryRiotAccount ?? "—" }}</td>
+                    <td>{{ player.accounts[0].name ?? "—" }}</td>
                 </tr>
             </tbody>
         </table>
