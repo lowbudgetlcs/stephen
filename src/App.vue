@@ -1,14 +1,20 @@
 <template>
     <div class="app-layout">
-        <SideBar />
-        <main class="main-content">
+        <SideBar v-if="showSidebar" />
+        <main class="main-content" :class="{ 'no-sidebar': !showSidebar }">
             <router-view />
         </main>
     </div>
 </template>
 
 <script setup lang="ts">
-import SideBar from "./components/SideBar.vue";
+import { computed } from "vue";
+import { useRoute } from "vue-router";
+import SideBar from "./components/Sidebar.vue";
+
+const route = useRoute();
+
+const showSidebar = computed(() => route.name !== "login");
 </script>
 
 <style>

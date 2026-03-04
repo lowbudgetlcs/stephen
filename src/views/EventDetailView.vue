@@ -73,7 +73,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { eventApi, eventTeamsApi, eventSeriesApi } from "../api";
+import { eventApi, eventSeriesApi } from "../api";
 import type {
     EventDto,
     TeamDto,
@@ -95,7 +95,7 @@ onMounted(async () => {
     try {
         const [eventRes, teamsRes, seriesRes] = await Promise.all([
             eventApi.getEventById(id),
-            eventTeamsApi.getTeamsInEvent(id),
+            eventApi.getTeamsInEvent(id),
             eventSeriesApi.getSeriesInEvent(id),
         ]);
         event.value = eventRes.data;

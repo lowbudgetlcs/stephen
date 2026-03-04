@@ -12,8 +12,46 @@
                 Players
             </router-link>
         </nav>
+
+        <div class="sidebar-footer">
+            <div v-if="username" class="user-info">
+                <span class="user-icon">👤</span>
+                <span class="user-name">{{ username }}</span>
+            </div>
+            <button
+                class="logout-btn"
+                @click="handleLogout"
+                :disabled="loggingOut"
+            >
+                {{ loggingOut ? "Logging out…" : "Log Out" }}
+            </button>
+        </div>
     </aside>
 </template>
+
+<script setup lang="ts">
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { authApi } from "../api";
+import { useAuth } from "../composables/useAuth";
+
+const router = useRouter();
+const { username, clearUser } = useAuth();
+const loggingOut = ref(false);
+
+async function handleLogout() {
+    loggingOut.value = true;
+    try {
+        await authApi.logout();
+    } catch {
+        // Still redirect even if call fails
+    } finally {
+        clearUser();
+        loggingOut.value = false;
+        router.push("/login");
+    }
+}
+</script>
 
 <style scoped>
 .sidebar {
@@ -44,6 +82,7 @@
     display: flex;
     flex-direction: column;
     padding: 0.75rem 0;
+    flex: 1;
 }
 
 .nav-item {
@@ -65,5 +104,55 @@
     background: #334155;
     color: #ffffff;
     border-left: 3px solid #3b82f6;
+}
+
+.sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid #334155;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.25rem;
+}
+
+.user-icon {
+    font-size: 1rem;
+}
+
+.user-name {
+    color: #f1f5f9;
+    font-size: 0.9rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 0.5rem;
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s;
+}
+
+.logout-btn:hover {
+    background: #334155;
+    color: #f1f5f9;
+}
+
+.logout-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 </style>

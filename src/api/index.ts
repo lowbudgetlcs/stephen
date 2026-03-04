@@ -2,6 +2,7 @@ import { Configuration } from "../dennysClient/configuration";
 import axios from "axios";
 
 import {
+  AuthenticationApi,
   EventsV1Api,
   EventGroupsV1Api,
   SeriesV1Api,
@@ -17,32 +18,32 @@ const config = new Configuration({
 });
 
 // Shared Axios instance with logging
-const axiosInstance = axios.create();
-
-// Log every request
-axiosInstance.interceptors.request.use((req) => {
-  console.log(`➡️ ${req.method?.toUpperCase()} ${req.baseURL ?? ""}${req.url}`);
-  return req;
+export const axiosInstance = axios.create({
+  withCredentials: true,
 });
 
-// Log every response (and errors)
-axiosInstance.interceptors.response.use(
-  (res) => {
+// Logging (dev only)
+if (import.meta.env.DEV) {
+  axiosInstance.interceptors.request.use((req) => {
     console.log(
-      `✅ ${res.status} ${res.config.method?.toUpperCase()} ${res.config.url}`,
-      res.data,
+      `➡️ ${req.method?.toUpperCase()} ${req.baseURL ?? ""}${req.url}`,
     );
-    return res;
-  },
-  (err) => {
-    console.error(
-      `❌ ${err.response?.status ?? "NETWORK"} ${err.config?.method?.toUpperCase()} ${err.config?.url}`,
-      err.response?.data,
-    );
-    return Promise.reject(err);
-  },
-);
+    return req;
+  });
 
+  axiosInstance.interceptors.response.use(
+    (res) => {
+      console.log(`✅ ${res.status}`, res.data);
+      return res;
+    },
+    (err) => {
+      console.error(`❌ ${err.response?.status}`, err.response?.data);
+      return Promise.reject(err);
+    },
+  );
+}
+
+export const authApi = new AuthenticationApi(config, basePath, axiosInstance);
 export const eventApi = new EventsV1Api(config, basePath, axiosInstance);
 export const eventGroupEventsApi = new EventGroupsV1Api(
   config,
