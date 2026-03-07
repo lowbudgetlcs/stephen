@@ -2,7 +2,7 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="login-header">
-                <h1>☆ LBLCS</h1>
+                <h1>Stephen</h1>
                 <p>Sign in to continue</p>
             </div>
 
@@ -76,8 +76,8 @@ async function handleLogin() {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    margin-left: -200px; /* offset sidebar margin so it's truly centered */
+    width: 100%;
+    min-height: calc(100vh - 6rem);
 }
 
 .login-card {

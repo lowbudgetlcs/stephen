@@ -18,6 +18,12 @@ const showSidebar = computed(() => route.name !== "login");
 </script>
 
 <style>
+#app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 *,
 *::before,
 *::after {
@@ -38,8 +44,10 @@ body {
 }
 
 .main-content {
-    margin-left: 200px;
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     padding: 2rem;
-    min-height: 100vh;
 }
 </style>

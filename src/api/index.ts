@@ -1,5 +1,7 @@
 import { Configuration } from "../dennysClient/configuration";
 import axios from "axios";
+import router from "../router";
+import { useAuth } from "../composables/useAuth";
 
 import {
   AuthenticationApi,
@@ -11,7 +13,7 @@ import {
   AccountsV1Api,
 } from "../dennysClient/api";
 
-const basePath = import.meta.env.VITE_DENNYS_API_URL || "http://localhost:3000";
+const basePath = import.meta.env.VITE_DENNYS_API_URL || "/api";
 
 const config = new Configuration({
   basePath: basePath,
@@ -42,6 +44,19 @@ if (import.meta.env.DEV) {
     },
   );
 }
+
+// Add this after your existing interceptors
+axiosInstance.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      const { clearUser } = useAuth();
+      clearUser();
+      router.push("/login");
+    }
+    return Promise.reject(err);
+  },
+);
 
 export const authApi = new AuthenticationApi(config, basePath, axiosInstance);
 export const eventApi = new EventsV1Api(config, basePath, axiosInstance);

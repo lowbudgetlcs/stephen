@@ -1,7 +1,7 @@
 <template>
     <aside class="sidebar">
         <div class="sidebar-header">
-            <router-link to="/" class="brand">☆ LBLCS</router-link>
+            <router-link to="/" class="brand">Stephen</router-link>
         </div>
 
         <nav class="sidebar-nav">
