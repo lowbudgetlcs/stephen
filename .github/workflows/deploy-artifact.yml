@@ -19,6 +19,8 @@ jobs:
   build-artifact:
     name: Build, compress, and upload distribution 
     runs-on: ubuntu-latest
+    needs: 
+      - set-version 
     steps:
       - uses: actions/checkout@v6
 
@@ -46,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: distro
-          path: distro
+          path: dist.tgz
 
   deploy-artifact:
     name: Deploys the build to production
