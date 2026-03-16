@@ -45,7 +45,7 @@ jobs:
         run: tar -czvf dist.tgz dist
 
       - name: Upload distro 
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: distro
           path: dist.tgz
@@ -58,7 +58,7 @@ jobs:
       - build-artifact
     steps:
       - name: Download distro 
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: distro 
           path: distfiles
@@ -79,7 +79,7 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: distfiles/*
+          source: distfiles/dist.tgz
           target: "${{ env.directory }}"
 
       - name: Extract dist into dist/ dir
