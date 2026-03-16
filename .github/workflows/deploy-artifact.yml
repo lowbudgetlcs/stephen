@@ -92,7 +92,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd "${{ env.directory }}"
-            tar -xzvf dist.tgz -C dist 
+            tar -xzvf distfiles/dist.tgz -C dist 
 
 
 
