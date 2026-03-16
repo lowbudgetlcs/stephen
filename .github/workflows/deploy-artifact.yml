@@ -79,8 +79,9 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: distfiles/dist.tgz
+          source: distfiles/*
           target: "${{ env.directory }}"
+          strip_component: 1
 
       - name: Extract dist into dist/ dir
         uses: appleboy/ssh-action@v1.0.3
