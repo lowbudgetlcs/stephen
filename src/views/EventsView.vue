@@ -652,9 +652,14 @@
             <div class="modal modal-wide">
                 <div class="modal-header-row">
                     <h2>{{ selectedTeam?.name }}</h2>
-                    <span class="team-id-badge"
-                        >ID: {{ selectedTeam?.id }}</span
-                    >
+                    <div class="header-actions">
+                        <button class="small-btn" @click="openPatchTeam">
+                            Edit
+                        </button>
+                        <span class="team-id-badge"
+                            >ID: {{ selectedTeam?.id }}</span
+                        >
+                    </div>
                 </div>
 
                 <h3>Players</h3>
@@ -731,6 +736,47 @@
                         Close
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Patch Team Modal -->
+        <div
+            v-if="showPatchTeam"
+            class="modal-overlay"
+            @click.self="showPatchTeam = false"
+        >
+            <div class="modal">
+                <h2>Edit Team</h2>
+                <form @submit.prevent="submitPatchTeam">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input v-model="patchTeam.name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Logo URL</label>
+                        <input
+                            v-model="patchTeam.logo"
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <p v-if="modalError" class="error">{{ modalError }}</p>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            @click="showPatchTeam = false"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="submit-btn"
+                            :disabled="modalLoading"
+                        >
+                            {{ modalLoading ? "Saving..." : "Save" }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -1197,6 +1243,54 @@ const paginatedEvents = computed(() => {
 watch(events, () => {
     currentPage.value = 0;
 });
+
+// Patch Team State
+const showPatchTeam = ref(false);
+const patchTeam = ref({ name: "", logo: "" });
+
+function openPatchTeam() {
+    if (!selectedTeam.value) return;
+    patchTeam.value = {
+        name: selectedTeam.value.name || "",
+        logo: selectedTeam.value.logo || "",
+    };
+    modalError.value = "";
+    showPatchTeam.value = true;
+}
+
+async function submitPatchTeam() {
+    if (!selectedTeam.value) return;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        // Only send fields that have changed / are non-empty
+        const payload: any = {};
+        if (
+            patchTeam.value.name &&
+            patchTeam.value.name !== selectedTeam.value.name
+        ) {
+            payload.name = patchTeam.value.name;
+        }
+        if (patchTeam.value.logo !== (selectedTeam.value.logo || "")) {
+            payload.logo = patchTeam.value.logo;
+        }
+
+        await teamApi.patchTeam(selectedTeam.value.id, payload);
+
+        // Update local state
+        Object.assign(selectedTeam.value, payload);
+        const idx = allTeams.value.findIndex(
+            (t: any) => t.id === selectedTeam.value.id,
+        );
+        if (idx >= 0) Object.assign(allTeams.value[idx], payload);
+
+        showPatchTeam.value = false;
+    } catch {
+        modalError.value = "Failed to update team.";
+    } finally {
+        modalLoading.value = false;
+    }
+}
 </script>
 
 <style scoped>
@@ -1831,5 +1925,11 @@ h3 {
 .remove-player-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>
