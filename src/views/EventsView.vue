@@ -353,7 +353,7 @@
                     </div>
                     <div class="form-group">
                         <label>Logo Name (optional)</label>
-                        <input v-model="newTeam.logoName" />
+                        <input v-model="newTeam.logo" />
                     </div>
                     <p v-if="modalError" class="error">{{ modalError }}</p>
                     <div class="modal-actions">
@@ -765,7 +765,7 @@ const newEvent = ref({
 });
 const newStatus = ref<EventStatus>(EventStatus.Active);
 const addTeamMode = ref<"new" | "existing">("new");
-const newTeam = ref({ name: "", logoName: "" });
+const newTeam = ref({ name: "", logo: "" });
 
 //  Existing Team Search
 const teamSearchQuery = ref("");
@@ -961,7 +961,7 @@ async function changeEventState() {
 // Add Team Modal
 function openAddTeamModal() {
     addTeamMode.value = "new";
-    newTeam.value = { name: "", logoName: "" };
+    newTeam.value = { name: "", logo: "" };
     teamSearchQuery.value = "";
     teamDropdownOpen.value = false;
     selectedExistingTeams.value = [];
@@ -977,7 +977,7 @@ async function createAndAddTeam() {
     try {
         const res = await teamApi.addTeam({
             name: newTeam.value.name,
-            logoName: newTeam.value.logoName || null,
+            logo: newTeam.value.logo,
         });
         const createdTeam = res.data;
         await eventApi.addTeamToEvent(selectedEventId.value, {
@@ -987,7 +987,7 @@ async function createAndAddTeam() {
         const allRes = await teamApi.getTeams();
         allTeams.value = allRes.data;
         showAddTeam.value = false;
-        newTeam.value = { name: "", logoName: "" };
+        newTeam.value = { name: "", logo: "" };
         await reloadCurrentEvent();
     } catch {
         modalError.value = "Failed to create and add team.";
