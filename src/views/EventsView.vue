@@ -875,6 +875,8 @@ async function onGroupChange() {
 async function selectEvent(eventId: number) {
     selectedEventId.value = eventId;
     selectedEvent.value = null;
+    seriesFilterTeamId.value = null;
+
     teams.value = [];
     series.value = [];
     error.value = "";
