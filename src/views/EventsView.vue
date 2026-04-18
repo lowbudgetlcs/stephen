@@ -30,17 +30,41 @@
 
         <template v-else-if="selectedGroupId">
             <!-- Event Tabs -->
-            <div class="event-tabs">
+            <div class="event-tabs-container">
                 <button
-                    v-for="event in events"
-                    :key="event.id"
-                    class="tab"
-                    :class="{ active: selectedEventId === event.id }"
-                    @click="selectEvent(event.id)"
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage === 0"
+                    @click="currentPage--"
                 >
-                    {{ event.name }}
+                    ‹
                 </button>
-                <p v-if="!events.length" class="status">No events found.</p>
+
+                <div class="event-tabs">
+                    <button
+                        v-for="event in paginatedEvents"
+                        :key="event.id"
+                        class="tab"
+                        :class="{ active: selectedEventId === event.id }"
+                        @click="selectEvent(event.id)"
+                    >
+                        {{ event.name }}
+                    </button>
+                    <p v-if="!events.length" class="status">No events found.</p>
+                </div>
+
+                <button
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage >= totalPages - 1"
+                    @click="currentPage++"
+                >
+                    ›
+                </button>
+
+                <span v-if="totalPages > 1" class="page-indicator">
+                    {{ currentPage + 1 }} / {{ totalPages }}
+                </span>
             </div>
 
             <!-- Event Content -->
@@ -713,7 +737,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import {
     eventApi,
     eventGroupEventsApi,
@@ -1155,6 +1179,24 @@ async function createSeries() {
         modalLoading.value = false;
     }
 }
+
+// Event Pagination
+const TABS_PER_PAGE = 5; // adjust to taste
+const currentPage = ref(0);
+
+const totalPages = computed(() =>
+    Math.ceil(events.value.length / TABS_PER_PAGE),
+);
+
+const paginatedEvents = computed(() => {
+    const start = currentPage.value * TABS_PER_PAGE;
+    return events.value.slice(start, start + TABS_PER_PAGE);
+});
+
+// Reset to first page whenever the events list changes (e.g. switching groups)
+watch(events, () => {
+    currentPage.value = 0;
+});
 </script>
 
 <style scoped>
@@ -1217,10 +1259,44 @@ async function createSeries() {
 }
 
 /*  Tabs  */
+
+.event-tabs-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    padding: 0.4rem 0.7rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: background 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
 .event-tabs {
     display: flex;
-    gap: 0;
-    border-bottom: 2px solid #e2e8f0;
+    gap: 0.4rem;
+    flex: 1;
+    overflow: hidden;
 }
 
 .tab {
