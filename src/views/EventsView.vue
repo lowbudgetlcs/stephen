@@ -145,8 +145,8 @@
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.teamIds[0]) }} vs
-                                                {{ teamName(s.teamIds[1]) }}
+                                                {{ teamName(s.team1Id) }} vs
+                                                {{ teamName(s.team2Id) }}
                                             </span>
                                             <span class="series-id"
                                                 >#{{ s.id }}</span
@@ -507,14 +507,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[0]"
+                            v-if="newSeries.team1Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[0]) }}</span>
+                            <span>{{ teamName(newSeries.team1Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[0] = 0"
+                                @click="newSeries.team1Id = 0"
                             >
                                 x
                             </button>
@@ -536,7 +536,7 @@
                                     team2DropdownOpen &&
                                     filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     ).length
                                 "
                                 class="autocomplete-dropdown"
@@ -544,7 +544,7 @@
                                 <div
                                     v-for="team in filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     )"
                                     :key="team.id"
                                     class="autocomplete-item"
@@ -556,14 +556,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[1]"
+                            v-if="newSeries.team2Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[1]) }}</span>
+                            <span>{{ teamName(newSeries.team2Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[1] = 0"
+                                @click="newSeries.team2Id = 0"
                             >
                                 x
                             </button>
@@ -608,8 +608,8 @@
                             class="submit-btn"
                             :disabled="
                                 modalLoading ||
-                                !newSeries.teamIds[0] ||
-                                !newSeries.teamIds[1]
+                                !newSeries.team1Id ||
+                                !newSeries.team2Id
                             "
                         >
                             {{ modalLoading ? "Creating..." : "Create" }}
@@ -806,8 +806,8 @@ const filteredSeries = computed(() => {
     if (!seriesFilterTeamId.value) return series.value;
     return series.value.filter(
         (s: any) =>
-            s.teamIds[0] === seriesFilterTeamId.value ||
-            s.teamIds[1] === seriesFilterTeamId.value,
+            s.team1Id === seriesFilterTeamId.value ||
+            s.team2Id === seriesFilterTeamId.value,
     );
 });
 
@@ -1086,7 +1086,8 @@ async function removePlayerFromTeam(player: any) {
 
 //  Create Series State
 const newSeries = ref({
-    teamIds: [0, 0] as [number, number],
+    team1Id: 0,
+    team2Id: 0,
     totalGames: 3,
     stage: EventStage.RegularSeason,
 });
@@ -1110,13 +1111,13 @@ function filteredTeamsForSeries(
 }
 
 function selectTeam1(team: any) {
-    newSeries.value.teamIds[0] = team.id;
+    newSeries.value.team1Id = team.id;
     team1SearchQuery.value = "";
     team1DropdownOpen.value = false;
 }
 
 function selectTeam2(team: any) {
-    newSeries.value.teamIds[1] = team.id;
+    newSeries.value.team2Id = team.id;
     team2SearchQuery.value = "";
     team2DropdownOpen.value = false;
 }
@@ -1124,7 +1125,7 @@ function selectTeam2(team: any) {
 //  Create Series
 async function createSeries() {
     if (!selectedEventId.value) return;
-    if (!newSeries.value.teamIds[0] || !newSeries.value.teamIds[1]) {
+    if (!newSeries.value.team1Id || !newSeries.value.team2Id) {
         modalError.value = "Please select both teams.";
         return;
     }
@@ -1133,13 +1134,15 @@ async function createSeries() {
     modalError.value = "";
     try {
         await eventSeriesApi.addSeriesToEvent(selectedEventId.value, {
-            teamIds: new Set(newSeries.value.teamIds),
+            team1Id: newSeries.value.team1Id,
+            team2Id: newSeries.value.team2Id,
             totalGames: newSeries.value.totalGames,
             stage: newSeries.value.stage,
         });
         showCreateSeries.value = false;
         newSeries.value = {
-            teamIds: [0, 0],
+            team1Id: 0,
+            team2Id: 0,
             totalGames: 3,
             stage: EventStage.RegularSeason,
         };
