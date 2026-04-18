@@ -30,17 +30,41 @@
 
         <template v-else-if="selectedGroupId">
             <!-- Event Tabs -->
-            <div class="event-tabs">
+            <div class="event-tabs-container">
                 <button
-                    v-for="event in events"
-                    :key="event.id"
-                    class="tab"
-                    :class="{ active: selectedEventId === event.id }"
-                    @click="selectEvent(event.id)"
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage === 0"
+                    @click="currentPage--"
                 >
-                    {{ event.name }}
+                    ‹
                 </button>
-                <p v-if="!events.length" class="status">No events found.</p>
+
+                <div class="event-tabs">
+                    <button
+                        v-for="event in paginatedEvents"
+                        :key="event.id"
+                        class="tab"
+                        :class="{ active: selectedEventId === event.id }"
+                        @click="selectEvent(event.id)"
+                    >
+                        {{ event.name }}
+                    </button>
+                    <p v-if="!events.length" class="status">No events found.</p>
+                </div>
+
+                <button
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage >= totalPages - 1"
+                    @click="currentPage++"
+                >
+                    ›
+                </button>
+
+                <span v-if="totalPages > 1" class="page-indicator">
+                    {{ currentPage + 1 }} / {{ totalPages }}
+                </span>
             </div>
 
             <!-- Event Content -->
@@ -145,8 +169,8 @@
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.teamIds[0]) }} vs
-                                                {{ teamName(s.teamIds[1]) }}
+                                                {{ teamName(s.team1Id) }} vs
+                                                {{ teamName(s.team2Id) }}
                                             </span>
                                             <span class="series-id"
                                                 >#{{ s.id }}</span
@@ -353,7 +377,7 @@
                     </div>
                     <div class="form-group">
                         <label>Logo Name (optional)</label>
-                        <input v-model="newTeam.logoName" />
+                        <input v-model="newTeam.logo" />
                     </div>
                     <p v-if="modalError" class="error">{{ modalError }}</p>
                     <div class="modal-actions">
@@ -507,14 +531,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[0]"
+                            v-if="newSeries.team1Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[0]) }}</span>
+                            <span>{{ teamName(newSeries.team1Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[0] = 0"
+                                @click="newSeries.team1Id = 0"
                             >
                                 x
                             </button>
@@ -536,7 +560,7 @@
                                     team2DropdownOpen &&
                                     filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     ).length
                                 "
                                 class="autocomplete-dropdown"
@@ -544,7 +568,7 @@
                                 <div
                                     v-for="team in filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     )"
                                     :key="team.id"
                                     class="autocomplete-item"
@@ -556,14 +580,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[1]"
+                            v-if="newSeries.team2Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[1]) }}</span>
+                            <span>{{ teamName(newSeries.team2Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[1] = 0"
+                                @click="newSeries.team2Id = 0"
                             >
                                 x
                             </button>
@@ -608,8 +632,8 @@
                             class="submit-btn"
                             :disabled="
                                 modalLoading ||
-                                !newSeries.teamIds[0] ||
-                                !newSeries.teamIds[1]
+                                !newSeries.team1Id ||
+                                !newSeries.team2Id
                             "
                         >
                             {{ modalLoading ? "Creating..." : "Create" }}
@@ -628,9 +652,14 @@
             <div class="modal modal-wide">
                 <div class="modal-header-row">
                     <h2>{{ selectedTeam?.name }}</h2>
-                    <span class="team-id-badge"
-                        >ID: {{ selectedTeam?.id }}</span
-                    >
+                    <div class="header-actions">
+                        <button class="small-btn" @click="openPatchTeam">
+                            Edit
+                        </button>
+                        <span class="team-id-badge"
+                            >ID: {{ selectedTeam?.id }}</span
+                        >
+                    </div>
                 </div>
 
                 <h3>Players</h3>
@@ -709,11 +738,52 @@
                 </div>
             </div>
         </div>
+
+        <!-- Patch Team Modal -->
+        <div
+            v-if="showPatchTeam"
+            class="modal-overlay"
+            @click.self="showPatchTeam = false"
+        >
+            <div class="modal">
+                <h2>Edit Team</h2>
+                <form @submit.prevent="submitPatchTeam">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input v-model="patchTeam.name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Logo URL</label>
+                        <input
+                            v-model="patchTeam.logo"
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <p v-if="modalError" class="error">{{ modalError }}</p>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            @click="showPatchTeam = false"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="submit-btn"
+                            :disabled="modalLoading"
+                        >
+                            {{ modalLoading ? "Saving..." : "Save" }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import {
     eventApi,
     eventGroupEventsApi,
@@ -765,7 +835,7 @@ const newEvent = ref({
 });
 const newStatus = ref<EventStatus>(EventStatus.Active);
 const addTeamMode = ref<"new" | "existing">("new");
-const newTeam = ref({ name: "", logoName: "" });
+const newTeam = ref({ name: "", logo: "" });
 
 //  Existing Team Search
 const teamSearchQuery = ref("");
@@ -806,8 +876,8 @@ const filteredSeries = computed(() => {
     if (!seriesFilterTeamId.value) return series.value;
     return series.value.filter(
         (s: any) =>
-            s.teamIds[0] === seriesFilterTeamId.value ||
-            s.teamIds[1] === seriesFilterTeamId.value,
+            s.team1Id === seriesFilterTeamId.value ||
+            s.team2Id === seriesFilterTeamId.value,
     );
 });
 
@@ -875,6 +945,8 @@ async function onGroupChange() {
 async function selectEvent(eventId: number) {
     selectedEventId.value = eventId;
     selectedEvent.value = null;
+    seriesFilterTeamId.value = null;
+
     teams.value = [];
     series.value = [];
     error.value = "";
@@ -961,7 +1033,7 @@ async function changeEventState() {
 // Add Team Modal
 function openAddTeamModal() {
     addTeamMode.value = "new";
-    newTeam.value = { name: "", logoName: "" };
+    newTeam.value = { name: "", logo: "" };
     teamSearchQuery.value = "";
     teamDropdownOpen.value = false;
     selectedExistingTeams.value = [];
@@ -977,7 +1049,7 @@ async function createAndAddTeam() {
     try {
         const res = await teamApi.addTeam({
             name: newTeam.value.name,
-            logoName: newTeam.value.logoName || null,
+            logo: newTeam.value.logo,
         });
         const createdTeam = res.data;
         await eventApi.addTeamToEvent(selectedEventId.value, {
@@ -987,7 +1059,7 @@ async function createAndAddTeam() {
         const allRes = await teamApi.getTeams();
         allTeams.value = allRes.data;
         showAddTeam.value = false;
-        newTeam.value = { name: "", logoName: "" };
+        newTeam.value = { name: "", logo: "" };
         await reloadCurrentEvent();
     } catch {
         modalError.value = "Failed to create and add team.";
@@ -1086,7 +1158,8 @@ async function removePlayerFromTeam(player: any) {
 
 //  Create Series State
 const newSeries = ref({
-    teamIds: [0, 0] as [number, number],
+    team1Id: 0,
+    team2Id: 0,
     totalGames: 3,
     stage: EventStage.RegularSeason,
 });
@@ -1110,13 +1183,13 @@ function filteredTeamsForSeries(
 }
 
 function selectTeam1(team: any) {
-    newSeries.value.teamIds[0] = team.id;
+    newSeries.value.team1Id = team.id;
     team1SearchQuery.value = "";
     team1DropdownOpen.value = false;
 }
 
 function selectTeam2(team: any) {
-    newSeries.value.teamIds[1] = team.id;
+    newSeries.value.team2Id = team.id;
     team2SearchQuery.value = "";
     team2DropdownOpen.value = false;
 }
@@ -1124,7 +1197,7 @@ function selectTeam2(team: any) {
 //  Create Series
 async function createSeries() {
     if (!selectedEventId.value) return;
-    if (!newSeries.value.teamIds[0] || !newSeries.value.teamIds[1]) {
+    if (!newSeries.value.team1Id || !newSeries.value.team2Id) {
         modalError.value = "Please select both teams.";
         return;
     }
@@ -1133,19 +1206,87 @@ async function createSeries() {
     modalError.value = "";
     try {
         await eventSeriesApi.addSeriesToEvent(selectedEventId.value, {
-            teamIds: new Set(newSeries.value.teamIds),
+            team1Id: newSeries.value.team1Id,
+            team2Id: newSeries.value.team2Id,
             totalGames: newSeries.value.totalGames,
             stage: newSeries.value.stage,
         });
         showCreateSeries.value = false;
         newSeries.value = {
-            teamIds: [0, 0],
+            team1Id: 0,
+            team2Id: 0,
             totalGames: 3,
             stage: EventStage.RegularSeason,
         };
         await reloadCurrentEvent();
     } catch {
         modalError.value = "Failed to create series.";
+    } finally {
+        modalLoading.value = false;
+    }
+}
+
+// Event Pagination
+const TABS_PER_PAGE = 5; // adjust to taste
+const currentPage = ref(0);
+
+const totalPages = computed(() =>
+    Math.ceil(events.value.length / TABS_PER_PAGE),
+);
+
+const paginatedEvents = computed(() => {
+    const start = currentPage.value * TABS_PER_PAGE;
+    return events.value.slice(start, start + TABS_PER_PAGE);
+});
+
+// Reset to first page whenever the events list changes (e.g. switching groups)
+watch(events, () => {
+    currentPage.value = 0;
+});
+
+// Patch Team State
+const showPatchTeam = ref(false);
+const patchTeam = ref({ name: "", logo: "" });
+
+function openPatchTeam() {
+    if (!selectedTeam.value) return;
+    patchTeam.value = {
+        name: selectedTeam.value.name || "",
+        logo: selectedTeam.value.logo || "",
+    };
+    modalError.value = "";
+    showPatchTeam.value = true;
+}
+
+async function submitPatchTeam() {
+    if (!selectedTeam.value) return;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        // Only send fields that have changed / are non-empty
+        const payload: any = {};
+        if (
+            patchTeam.value.name &&
+            patchTeam.value.name !== selectedTeam.value.name
+        ) {
+            payload.name = patchTeam.value.name;
+        }
+        if (patchTeam.value.logo !== (selectedTeam.value.logo || "")) {
+            payload.logo = patchTeam.value.logo;
+        }
+
+        await teamApi.patchTeam(selectedTeam.value.id, payload);
+
+        // Update local state
+        Object.assign(selectedTeam.value, payload);
+        const idx = allTeams.value.findIndex(
+            (t: any) => t.id === selectedTeam.value.id,
+        );
+        if (idx >= 0) Object.assign(allTeams.value[idx], payload);
+
+        showPatchTeam.value = false;
+    } catch {
+        modalError.value = "Failed to update team.";
     } finally {
         modalLoading.value = false;
     }
@@ -1212,10 +1353,44 @@ async function createSeries() {
 }
 
 /*  Tabs  */
+
+.event-tabs-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    padding: 0.4rem 0.7rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: background 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
 .event-tabs {
     display: flex;
-    gap: 0;
-    border-bottom: 2px solid #e2e8f0;
+    gap: 0.4rem;
+    flex: 1;
+    overflow: hidden;
 }
 
 .tab {
@@ -1750,5 +1925,11 @@ h3 {
 .remove-player-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>
