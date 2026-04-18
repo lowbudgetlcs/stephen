@@ -15,7 +15,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://dennys-130.lowbudgetlcs.com",
+        target: "https://dennys-131.lowbudgetlcs.com",
         changeOrigin: true,
         secure: true,
         cookieDomainRewrite: "localhost",
