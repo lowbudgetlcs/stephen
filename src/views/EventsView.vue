@@ -23,6 +23,14 @@
             <button class="action-btn" @click="showCreateEvent = true">
                 + New Event
             </button>
+            <button
+                class="refresh-btn"
+                type="button"
+                :disabled="isRefreshing"
+                @click="refreshData"
+            >
+                {{ isRefreshing ? "Refreshing…" : "↻ Refresh" }}
+            </button>
         </div>
 
         <p v-if="loading" class="status">Loading...</p>
@@ -169,8 +177,8 @@
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.team1Id) }} vs
-                                                {{ teamName(s.team2Id) }}
+                                                {{ teamName(s.teamIds[0]) }} vs
+                                                {{ teamName(s.teamIds[1]) }}
                                             </span>
                                             <span class="series-id"
                                                 >#{{ s.id }}</span
@@ -794,6 +802,7 @@ import {
 import { EventStatus, EventStage } from "../dennysClient/api";
 
 //  State
+const isRefreshing = ref(false);
 const eventGroups = ref<any[]>([]);
 const events = ref<any[]>([]);
 const teams = ref<any[]>([]);
@@ -881,8 +890,9 @@ const filteredSeries = computed(() => {
     );
 });
 
-// Init
-onMounted(async () => {
+async function refreshData() {
+    if (isRefreshing.value) return;
+    isRefreshing.value = true;
     loading.value = true;
     try {
         const [groupsRes, teamsRes, playersRes] = await Promise.all([
@@ -898,10 +908,17 @@ onMounted(async () => {
         error.value = "Failed to load initial data.";
     } finally {
         loading.value = false;
+        isRefreshing.value = false;
     }
+}
+
+// Init
+onMounted(async () => {
+    refreshData();
 });
 
 function teamName(teamId: number): string {
+    console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
@@ -1350,6 +1367,32 @@ async function submitPatchTeam() {
 
 .action-btn:hover {
     background: #2563eb;
+}
+
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: #999;
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /*  Tabs  */
