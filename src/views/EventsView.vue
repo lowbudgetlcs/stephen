@@ -169,8 +169,8 @@
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.team1Id) }} vs
-                                                {{ teamName(s.team2Id) }}
+                                                {{ teamName(s.teamIds[0]) }} vs
+                                                {{ teamName(s.teamIds[1]) }}
                                             </span>
                                             <span class="series-id"
                                                 >#{{ s.id }}</span
@@ -902,6 +902,7 @@ onMounted(async () => {
 });
 
 function teamName(teamId: number): string {
+    console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
