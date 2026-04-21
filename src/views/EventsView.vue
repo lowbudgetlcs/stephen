@@ -384,8 +384,11 @@
                         <input v-model="newTeam.name" required />
                     </div>
                     <div class="form-group">
-                        <label>Logo Name (optional)</label>
-                        <input v-model="newTeam.logo" />
+                        <label>Logo URL (optional)</label>
+                        <input 
+                            v-model="newTeam.logo" 
+                            placeholder="https://..."
+                        />
                     </div>
                     <p v-if="modalError" class="error">{{ modalError }}</p>
                     <div class="modal-actions">
