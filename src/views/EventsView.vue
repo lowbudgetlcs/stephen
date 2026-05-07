@@ -141,28 +141,49 @@
                     <section class="panel full-height">
                         <div class="panel-header">
                             <h2>Series</h2>
-                            <div class="header-actions">
-                                <select
-                                    v-model="seriesFilterTeamId"
-                                    class="filter-select"
-                                >
-                                    <option :value="null">
-                                        Filter by team
-                                    </option>
-                                    <option
-                                        v-for="team in teams"
-                                        :key="team.id"
-                                        :value="team.id"
+                            <div class="series-filters">
+                                <div class="header-actions filter-group">
+                                    <label>Team</label>
+                                    <select
+                                        v-model="seriesFilterTeamId"
+                                        class="filter-select"
                                     >
-                                        {{ team.name }}
-                                    </option>
-                                </select>
-                                <button
-                                    class="small-btn"
-                                    @click="showCreateSeries = true"
-                                >
-                                    + New Series
-                                </button>
+                                        <option :value="null">All Teams</option>
+                                        <option
+                                            v-for="team in teams"
+                                            :key="team.id"
+                                            :value="team.id"
+                                        >
+                                            {{ team.name }}
+                                        </option>
+                                    </select>
+                                    <button
+                                        class="small-btn"
+                                        @click="showCreateSeries = true"
+                                    >
+                                        + New Series
+                                    </button>
+                                </div>
+                                <div class="header-actions filter-group">
+                                    <label>Stage</label>
+                                    <select
+                                        v-model="seriesFilterStage"
+                                        class="filter-select"
+                                    >
+                                        <option :value="null">
+                                            All Stages
+                                        </option>
+                                        <option
+                                            v-for="stage in Object.values(
+                                                EventStage,
+                                            )"
+                                            :key="stage"
+                                            :value="stage"
+                                        >
+                                            {{ stage.replace("_", " ") }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="panel-body">
@@ -171,20 +192,29 @@
                                     <tr>
                                         <th>Matchup</th>
                                         <th>Games</th>
+                                        <th>Stage</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.teamIds[0]) }} vs
-                                                {{ teamName(s.teamIds[1]) }}
+                                                <span class="team-1">{{
+                                                    teamName(s.teamIds[0])
+                                                }}</span>
+                                                vs
+                                                <span class="team-2">{{
+                                                    teamName(s.teamIds[1])
+                                                }}</span>
                                             </span>
                                             <span class="series-id"
-                                                >#{{ s.id }}</span
-                                            >
+                                                >#{{ s.id }}
+                                            </span>
                                         </td>
                                         <td>{{ s.totalGames ?? "-" }}</td>
+                                        <td class="series-stage">
+                                            {{ s.eventStage ?? "-" }}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -880,14 +910,27 @@ const teamPlayers = ref<any[]>([]);
 const teamPlayersLoading = ref(false);
 
 const seriesFilterTeamId = ref<number | null>(null);
+const seriesFilterStage = ref<string | null>(null);
 
 const filteredSeries = computed(() => {
-    if (!seriesFilterTeamId.value) return series.value;
-    return series.value.filter(
-        (s: any) =>
-            s.team1Id === seriesFilterTeamId.value ||
-            s.team2Id === seriesFilterTeamId.value,
-    );
+    let result = series.value;
+    // console.log(
+    //     `Filtering series: team=${seriesFilterTeamId.value} stage=${seriesFilterStage.value}, teams=${teams.value}, result=${result}`,
+    // );
+    if (seriesFilterTeamId.value) {
+        // console.log(`Unwrapped Result object: ${JSON.stringify(result)}`);
+        result = result.filter(
+            (s: any) =>
+                s.teamIds[0] === seriesFilterTeamId.value ||
+                s.teamIds[1] === seriesFilterTeamId.value,
+        );
+    }
+    if (seriesFilterStage.value) {
+        result = result.filter(
+            (s: any) => s.eventStage === seriesFilterStage.value,
+        );
+    }
+    return result;
 });
 
 async function refreshData() {
@@ -918,7 +961,7 @@ onMounted(async () => {
 });
 
 function teamName(teamId: number): string {
-    console.log("hello, we're looking for", teamId);
+    // console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
@@ -963,6 +1006,7 @@ async function selectEvent(eventId: number) {
     selectedEventId.value = eventId;
     selectedEvent.value = null;
     seriesFilterTeamId.value = null;
+    seriesFilterStage.value = null;
 
     teams.value = [];
     series.value = [];
@@ -1259,6 +1303,11 @@ const paginatedEvents = computed(() => {
 // Reset to first page whenever the events list changes (e.g. switching groups)
 watch(events, () => {
     currentPage.value = 0;
+});
+
+watch(selectedEventId, () => {
+    seriesFilterTeamId.value = null;
+    seriesFilterStage.value = null;
 });
 
 // Patch Team State
@@ -1631,6 +1680,21 @@ th {
     font-size: 0.75rem;
     font-style: italic;
     color: #94a3b8;
+}
+
+.series-stage {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #94a3b8;
+}
+
+.team-1 {
+    color: #1e88e5; /* blue */
+    font-weight: bold;
+}
+.team-2 {
+    color: #e53935; /* red */
+    font-weight: bold;
 }
 
 /*  Modals  */
