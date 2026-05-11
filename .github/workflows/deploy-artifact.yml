@@ -27,9 +27,14 @@ jobs:
       - name: Install dependencies 
         run: npm i
 
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Calculate build-time variables
         run: |
-          if [[ ${GITHUB_REF} == 'main' ]]; then
+          if [[ ${{ steps.extract_branch.outputs.branch }} == 'main' ]]; then
             declare dennys_url="https://dennys.lowbudgetlcs.com"
           else
             declare    version=${{ needs.set-version.outputs.version }}
@@ -64,9 +69,14 @@ jobs:
           name: distro 
           path: distfiles
  
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Configure variables
         run: |
-          if [[ ${GITHUB_REF} == 'main' ]]; then
+          if [[ ${{ steps.extract_branch.outputs.branch }} == 'main' ]]; then
             echo "directory=/releases/stephen/latest" >> "$GITHUB_ENV"
           else
             declare    version=${{ needs.set-version.outputs.version }}
