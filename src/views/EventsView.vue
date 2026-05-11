@@ -991,7 +991,8 @@ async function onGroupChange() {
             const res = await eventGroupEventsApi.getEventsInEventGroup(
                 selectedGroupId.value as number,
             );
-            events.value = res.data;
+            // @ts-expect-error - API docs wrong right now, returns single object not array will fix later TODO
+            events.value = res.data?.events ?? [];
         }
 
         if (events.value.length > 0) {
@@ -1299,7 +1300,9 @@ const totalPages = computed(() =>
 );
 
 const paginatedEvents = computed(() => {
+    // console.log(`'${JSON.stringify(events.value)}`);
     const start = currentPage.value * TABS_PER_PAGE;
+
     return events.value.slice(start, start + TABS_PER_PAGE);
 });
 
