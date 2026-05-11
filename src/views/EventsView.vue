@@ -23,6 +23,14 @@
             <button class="action-btn" @click="showCreateEvent = true">
                 + New Event
             </button>
+            <button
+                class="refresh-btn"
+                type="button"
+                :disabled="isRefreshing"
+                @click="refreshData"
+            >
+                {{ isRefreshing ? "Refreshing…" : "↻ Refresh" }}
+            </button>
         </div>
 
         <p v-if="loading" class="status">Loading...</p>
@@ -30,17 +38,41 @@
 
         <template v-else-if="selectedGroupId">
             <!-- Event Tabs -->
-            <div class="event-tabs">
+            <div class="event-tabs-container">
                 <button
-                    v-for="event in events"
-                    :key="event.id"
-                    class="tab"
-                    :class="{ active: selectedEventId === event.id }"
-                    @click="selectEvent(event.id)"
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage === 0"
+                    @click="currentPage--"
                 >
-                    {{ event.name }}
+                    ‹
                 </button>
-                <p v-if="!events.length" class="status">No events found.</p>
+
+                <div class="event-tabs">
+                    <button
+                        v-for="event in paginatedEvents"
+                        :key="event.id"
+                        class="tab"
+                        :class="{ active: selectedEventId === event.id }"
+                        @click="selectEvent(event.id)"
+                    >
+                        {{ event.name }}
+                    </button>
+                    <p v-if="!events.length" class="status">No events found.</p>
+                </div>
+
+                <button
+                    v-if="totalPages > 1"
+                    class="page-btn"
+                    :disabled="currentPage >= totalPages - 1"
+                    @click="currentPage++"
+                >
+                    ›
+                </button>
+
+                <span v-if="totalPages > 1" class="page-indicator">
+                    {{ currentPage + 1 }} / {{ totalPages }}
+                </span>
             </div>
 
             <!-- Event Content -->
@@ -109,28 +141,49 @@
                     <section class="panel full-height">
                         <div class="panel-header">
                             <h2>Series</h2>
-                            <div class="header-actions">
-                                <select
-                                    v-model="seriesFilterTeamId"
-                                    class="filter-select"
-                                >
-                                    <option :value="null">
-                                        Filter by team
-                                    </option>
-                                    <option
-                                        v-for="team in teams"
-                                        :key="team.id"
-                                        :value="team.id"
+                            <div class="series-filters">
+                                <div class="header-actions filter-group">
+                                    <label>Team</label>
+                                    <select
+                                        v-model="seriesFilterTeamId"
+                                        class="filter-select"
                                     >
-                                        {{ team.name }}
-                                    </option>
-                                </select>
-                                <button
-                                    class="small-btn"
-                                    @click="showCreateSeries = true"
-                                >
-                                    + New Series
-                                </button>
+                                        <option :value="null">All Teams</option>
+                                        <option
+                                            v-for="team in teams"
+                                            :key="team.id"
+                                            :value="team.id"
+                                        >
+                                            {{ team.name }}
+                                        </option>
+                                    </select>
+                                    <button
+                                        class="small-btn"
+                                        @click="showCreateSeries = true"
+                                    >
+                                        + New Series
+                                    </button>
+                                </div>
+                                <div class="header-actions filter-group">
+                                    <label>Stage</label>
+                                    <select
+                                        v-model="seriesFilterStage"
+                                        class="filter-select"
+                                    >
+                                        <option :value="null">
+                                            All Stages
+                                        </option>
+                                        <option
+                                            v-for="stage in Object.values(
+                                                EventStage,
+                                            )"
+                                            :key="stage"
+                                            :value="stage"
+                                        >
+                                            {{ stage.replace("_", " ") }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="panel-body">
@@ -139,20 +192,29 @@
                                     <tr>
                                         <th>Matchup</th>
                                         <th>Games</th>
+                                        <th>Stage</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-for="s in filteredSeries" :key="s.id">
                                         <td>
                                             <span class="matchup">
-                                                {{ teamName(s.teamIds[0]) }} vs
-                                                {{ teamName(s.teamIds[1]) }}
+                                                <span class="team-1">{{
+                                                    teamName(s.teamIds[0])
+                                                }}</span>
+                                                vs
+                                                <span class="team-2">{{
+                                                    teamName(s.teamIds[1])
+                                                }}</span>
                                             </span>
                                             <span class="series-id"
-                                                >#{{ s.id }}</span
-                                            >
+                                                >#{{ s.id }}
+                                            </span>
                                         </td>
                                         <td>{{ s.totalGames ?? "-" }}</td>
+                                        <td class="series-stage">
+                                            {{ s.eventStage ?? "-" }}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -352,8 +414,11 @@
                         <input v-model="newTeam.name" required />
                     </div>
                     <div class="form-group">
-                        <label>Logo Name (optional)</label>
-                        <input v-model="newTeam.logoName" />
+                        <label>Logo URL (optional)</label>
+                        <input 
+                            v-model="newTeam.logo" 
+                            placeholder="https://..."
+                        />
                     </div>
                     <p v-if="modalError" class="error">{{ modalError }}</p>
                     <div class="modal-actions">
@@ -507,14 +572,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[0]"
+                            v-if="newSeries.team1Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[0]) }}</span>
+                            <span>{{ teamName(newSeries.team1Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[0] = 0"
+                                @click="newSeries.team1Id = 0"
                             >
                                 x
                             </button>
@@ -536,7 +601,7 @@
                                     team2DropdownOpen &&
                                     filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     ).length
                                 "
                                 class="autocomplete-dropdown"
@@ -544,7 +609,7 @@
                                 <div
                                     v-for="team in filteredTeamsForSeries(
                                         team2SearchQuery,
-                                        newSeries.teamIds[0],
+                                        newSeries.team1Id,
                                     )"
                                     :key="team.id"
                                     class="autocomplete-item"
@@ -556,14 +621,14 @@
                             </div>
                         </div>
                         <div
-                            v-if="newSeries.teamIds[1]"
+                            v-if="newSeries.team2Id"
                             class="selected-team-preview"
                         >
-                            <span>{{ teamName(newSeries.teamIds[1]) }}</span>
+                            <span>{{ teamName(newSeries.team2Id) }}</span>
                             <button
                                 type="button"
                                 class="remove-btn"
-                                @click="newSeries.teamIds[1] = 0"
+                                @click="newSeries.team2Id = 0"
                             >
                                 x
                             </button>
@@ -608,8 +673,8 @@
                             class="submit-btn"
                             :disabled="
                                 modalLoading ||
-                                !newSeries.teamIds[0] ||
-                                !newSeries.teamIds[1]
+                                !newSeries.team1Id ||
+                                !newSeries.team2Id
                             "
                         >
                             {{ modalLoading ? "Creating..." : "Create" }}
@@ -628,9 +693,14 @@
             <div class="modal modal-wide">
                 <div class="modal-header-row">
                     <h2>{{ selectedTeam?.name }}</h2>
-                    <span class="team-id-badge"
-                        >ID: {{ selectedTeam?.id }}</span
-                    >
+                    <div class="header-actions">
+                        <button class="small-btn" @click="openPatchTeam">
+                            Edit
+                        </button>
+                        <span class="team-id-badge"
+                            >ID: {{ selectedTeam?.id }}</span
+                        >
+                    </div>
                 </div>
 
                 <h3>Players</h3>
@@ -709,11 +779,52 @@
                 </div>
             </div>
         </div>
+
+        <!-- Patch Team Modal -->
+        <div
+            v-if="showPatchTeam"
+            class="modal-overlay"
+            @click.self="showPatchTeam = false"
+        >
+            <div class="modal">
+                <h2>Edit Team</h2>
+                <form @submit.prevent="submitPatchTeam">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input v-model="patchTeam.name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Logo URL</label>
+                        <input
+                            v-model="patchTeam.logo"
+                            placeholder="https://..."
+                        />
+                    </div>
+                    <p v-if="modalError" class="error">{{ modalError }}</p>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            @click="showPatchTeam = false"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="submit-btn"
+                            :disabled="modalLoading"
+                        >
+                            {{ modalLoading ? "Saving..." : "Save" }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import {
     eventApi,
     eventGroupEventsApi,
@@ -724,6 +835,7 @@ import {
 import { EventStatus, EventStage } from "../dennysClient/api";
 
 //  State
+const isRefreshing = ref(false);
 const eventGroups = ref<any[]>([]);
 const events = ref<any[]>([]);
 const teams = ref<any[]>([]);
@@ -765,7 +877,7 @@ const newEvent = ref({
 });
 const newStatus = ref<EventStatus>(EventStatus.Active);
 const addTeamMode = ref<"new" | "existing">("new");
-const newTeam = ref({ name: "", logoName: "" });
+const newTeam = ref({ name: "", logo: "" });
 
 //  Existing Team Search
 const teamSearchQuery = ref("");
@@ -801,18 +913,32 @@ const teamPlayers = ref<any[]>([]);
 const teamPlayersLoading = ref(false);
 
 const seriesFilterTeamId = ref<number | null>(null);
+const seriesFilterStage = ref<string | null>(null);
 
 const filteredSeries = computed(() => {
-    if (!seriesFilterTeamId.value) return series.value;
-    return series.value.filter(
-        (s: any) =>
-            s.teamIds[0] === seriesFilterTeamId.value ||
-            s.teamIds[1] === seriesFilterTeamId.value,
-    );
+    let result = series.value;
+    // console.log(
+    //     `Filtering series: team=${seriesFilterTeamId.value} stage=${seriesFilterStage.value}, teams=${teams.value}, result=${result}`,
+    // );
+    if (seriesFilterTeamId.value) {
+        // console.log(`Unwrapped Result object: ${JSON.stringify(result)}`);
+        result = result.filter(
+            (s: any) =>
+                s.teamIds[0] === seriesFilterTeamId.value ||
+                s.teamIds[1] === seriesFilterTeamId.value,
+        );
+    }
+    if (seriesFilterStage.value) {
+        result = result.filter(
+            (s: any) => s.eventStage === seriesFilterStage.value,
+        );
+    }
+    return result;
 });
 
-// Init
-onMounted(async () => {
+async function refreshData() {
+    if (isRefreshing.value) return;
+    isRefreshing.value = true;
     loading.value = true;
     try {
         const [groupsRes, teamsRes, playersRes] = await Promise.all([
@@ -828,10 +954,17 @@ onMounted(async () => {
         error.value = "Failed to load initial data.";
     } finally {
         loading.value = false;
+        isRefreshing.value = false;
     }
+}
+
+// Init
+onMounted(async () => {
+    refreshData();
 });
 
 function teamName(teamId: number): string {
+    // console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
@@ -858,7 +991,8 @@ async function onGroupChange() {
             const res = await eventGroupEventsApi.getEventsInEventGroup(
                 selectedGroupId.value as number,
             );
-            events.value = res.data;
+            // @ts-expect-error - API docs wrong right now, returns single object not array will fix later TODO
+            events.value = res.data?.events ?? [];
         }
 
         if (events.value.length > 0) {
@@ -875,6 +1009,9 @@ async function onGroupChange() {
 async function selectEvent(eventId: number) {
     selectedEventId.value = eventId;
     selectedEvent.value = null;
+    seriesFilterTeamId.value = null;
+    seriesFilterStage.value = null;
+
     teams.value = [];
     series.value = [];
     error.value = "";
@@ -961,7 +1098,7 @@ async function changeEventState() {
 // Add Team Modal
 function openAddTeamModal() {
     addTeamMode.value = "new";
-    newTeam.value = { name: "", logoName: "" };
+    newTeam.value = { name: "", logo: "" };
     teamSearchQuery.value = "";
     teamDropdownOpen.value = false;
     selectedExistingTeams.value = [];
@@ -977,7 +1114,7 @@ async function createAndAddTeam() {
     try {
         const res = await teamApi.addTeam({
             name: newTeam.value.name,
-            logoName: newTeam.value.logoName || null,
+            logo: newTeam.value.logo,
         });
         const createdTeam = res.data;
         await eventApi.addTeamToEvent(selectedEventId.value, {
@@ -987,7 +1124,7 @@ async function createAndAddTeam() {
         const allRes = await teamApi.getTeams();
         allTeams.value = allRes.data;
         showAddTeam.value = false;
-        newTeam.value = { name: "", logoName: "" };
+        newTeam.value = { name: "", logo: "" };
         await reloadCurrentEvent();
     } catch {
         modalError.value = "Failed to create and add team.";
@@ -1086,7 +1223,8 @@ async function removePlayerFromTeam(player: any) {
 
 //  Create Series State
 const newSeries = ref({
-    teamIds: [0, 0] as [number, number],
+    team1Id: 0,
+    team2Id: 0,
     totalGames: 3,
     stage: EventStage.RegularSeason,
 });
@@ -1110,13 +1248,13 @@ function filteredTeamsForSeries(
 }
 
 function selectTeam1(team: any) {
-    newSeries.value.teamIds[0] = team.id;
+    newSeries.value.team1Id = team.id;
     team1SearchQuery.value = "";
     team1DropdownOpen.value = false;
 }
 
 function selectTeam2(team: any) {
-    newSeries.value.teamIds[1] = team.id;
+    newSeries.value.team2Id = team.id;
     team2SearchQuery.value = "";
     team2DropdownOpen.value = false;
 }
@@ -1124,7 +1262,7 @@ function selectTeam2(team: any) {
 //  Create Series
 async function createSeries() {
     if (!selectedEventId.value) return;
-    if (!newSeries.value.teamIds[0] || !newSeries.value.teamIds[1]) {
+    if (!newSeries.value.team1Id || !newSeries.value.team2Id) {
         modalError.value = "Please select both teams.";
         return;
     }
@@ -1133,19 +1271,94 @@ async function createSeries() {
     modalError.value = "";
     try {
         await eventSeriesApi.addSeriesToEvent(selectedEventId.value, {
-            teamIds: new Set(newSeries.value.teamIds),
+            team1Id: newSeries.value.team1Id,
+            team2Id: newSeries.value.team2Id,
             totalGames: newSeries.value.totalGames,
             stage: newSeries.value.stage,
         });
         showCreateSeries.value = false;
         newSeries.value = {
-            teamIds: [0, 0],
+            team1Id: 0,
+            team2Id: 0,
             totalGames: 3,
             stage: EventStage.RegularSeason,
         };
         await reloadCurrentEvent();
     } catch {
         modalError.value = "Failed to create series.";
+    } finally {
+        modalLoading.value = false;
+    }
+}
+
+// Event Pagination
+const TABS_PER_PAGE = 5; // adjust to taste
+const currentPage = ref(0);
+
+const totalPages = computed(() =>
+    Math.ceil(events.value.length / TABS_PER_PAGE),
+);
+
+const paginatedEvents = computed(() => {
+    // console.log(`'${JSON.stringify(events.value)}`);
+    const start = currentPage.value * TABS_PER_PAGE;
+
+    return events.value.slice(start, start + TABS_PER_PAGE);
+});
+
+// Reset to first page whenever the events list changes (e.g. switching groups)
+watch(events, () => {
+    currentPage.value = 0;
+});
+
+watch(selectedEventId, () => {
+    seriesFilterTeamId.value = null;
+    seriesFilterStage.value = null;
+});
+
+// Patch Team State
+const showPatchTeam = ref(false);
+const patchTeam = ref({ name: "", logo: "" });
+
+function openPatchTeam() {
+    if (!selectedTeam.value) return;
+    patchTeam.value = {
+        name: selectedTeam.value.name || "",
+        logo: selectedTeam.value.logo || "",
+    };
+    modalError.value = "";
+    showPatchTeam.value = true;
+}
+
+async function submitPatchTeam() {
+    if (!selectedTeam.value) return;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        // Only send fields that have changed / are non-empty
+        const payload: any = {};
+        if (
+            patchTeam.value.name &&
+            patchTeam.value.name !== selectedTeam.value.name
+        ) {
+            payload.name = patchTeam.value.name;
+        }
+        if (patchTeam.value.logo !== (selectedTeam.value.logo || "")) {
+            payload.logo = patchTeam.value.logo;
+        }
+
+        await teamApi.patchTeam(selectedTeam.value.id, payload);
+
+        // Update local state
+        Object.assign(selectedTeam.value, payload);
+        const idx = allTeams.value.findIndex(
+            (t: any) => t.id === selectedTeam.value.id,
+        );
+        if (idx >= 0) Object.assign(allTeams.value[idx], payload);
+
+        showPatchTeam.value = false;
+    } catch {
+        modalError.value = "Failed to update team.";
     } finally {
         modalLoading.value = false;
     }
@@ -1211,11 +1424,71 @@ async function createSeries() {
     background: #2563eb;
 }
 
+.refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: #f5f5f5;
+    border-color: #999;
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /*  Tabs  */
+
+.event-tabs-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-btn {
+    padding: 0.4rem 0.7rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #1e293b;
+    transition: background 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-indicator {
+    font-size: 0.8rem;
+    color: #64748b;
+    white-space: nowrap;
+}
+
 .event-tabs {
     display: flex;
-    gap: 0;
-    border-bottom: 2px solid #e2e8f0;
+    gap: 0.4rem;
+    flex: 1;
+    overflow: hidden;
 }
 
 .tab {
@@ -1413,6 +1686,21 @@ th {
     font-size: 0.75rem;
     font-style: italic;
     color: #94a3b8;
+}
+
+.series-stage {
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #94a3b8;
+}
+
+.team-1 {
+    color: #1e88e5; /* blue */
+    font-weight: bold;
+}
+.team-2 {
+    color: #e53935; /* red */
+    font-weight: bold;
 }
 
 /*  Modals  */
@@ -1750,5 +2038,11 @@ h3 {
 .remove-player-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 </style>

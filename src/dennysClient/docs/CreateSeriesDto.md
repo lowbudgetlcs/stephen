@@ -5,7 +5,8 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**teamIds** | **Set&lt;number&gt;** |  | [default to undefined]
+**team1Id** | **number** |  | [default to undefined]
+**team2Id** | **number** |  | [default to undefined]
 **totalGames** | **number** |  | [default to undefined]
 **stage** | **string** |  | [default to undefined]
 
@@ -15,7 +16,8 @@ Name | Type | Description | Notes
 import { CreateSeriesDto } from './api';
 
 const instance: CreateSeriesDto = {
-    teamIds,
+    team1Id,
+    team2Id,
     totalGames,
     stage,
 };

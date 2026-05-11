@@ -6,7 +6,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **string** |  | [optional] [default to undefined]
-**logoName** | **string** |  | [optional] [default to undefined]
+**logo** | **string** |  | [optional] [default to undefined]
 
 ## Example
 
@@ -15,7 +15,7 @@ import { PatchTeamDto } from './api';
 
 const instance: PatchTeamDto = {
     name,
-    logoName,
+    logo,
 };
 ```
 
