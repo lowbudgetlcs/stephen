@@ -916,11 +916,7 @@ const seriesFilterStage = ref<string | null>(null);
 
 const filteredSeries = computed(() => {
     let result = series.value;
-    // console.log(
-    //     `Filtering series: team=${seriesFilterTeamId.value} stage=${seriesFilterStage.value}, teams=${teams.value}, result=${result}`,
-    // );
     if (seriesFilterTeamId.value) {
-        // console.log(`Unwrapped Result object: ${JSON.stringify(result)}`);
         result = result.filter(
             (s: any) =>
                 s.teamIds[0] === seriesFilterTeamId.value ||
@@ -963,7 +959,6 @@ onMounted(async () => {
 });
 
 function teamName(teamId: number): string {
-    // console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
@@ -1329,7 +1324,6 @@ const totalPages = computed(() =>
 );
 
 const paginatedEvents = computed(() => {
-    // console.log(`'${JSON.stringify(events.value)}`);
     const start = currentPage.value * TABS_PER_PAGE;
 
     return events.value.slice(start, start + TABS_PER_PAGE);
