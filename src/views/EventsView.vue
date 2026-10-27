@@ -159,7 +159,7 @@
                                     </select>
                                     <button
                                         class="small-btn"
-                                        @click="showCreateSeries = true"
+                                        @click="openCreateSeries"
                                     >
                                         + New Series
                                     </button>
@@ -174,13 +174,11 @@
                                             All Stages
                                         </option>
                                         <option
-                                            v-for="stage in Object.values(
-                                                EventStage,
-                                            )"
+                                            v-for="stage in eventStages"
                                             :key="stage"
                                             :value="stage"
                                         >
-                                            {{ stage.replace("_", " ") }}
+                                            {{ stageLabel(stage) }}
                                         </option>
                                     </select>
                                 </div>
@@ -639,11 +637,12 @@
                     <div class="form-group">
                         <label>Stage</label>
                         <select v-model="newSeries.stage" required>
-                            <option :value="EventStage.RegularSeason">
-                                Regular Season
-                            </option>
-                            <option :value="EventStage.Playoffs">
-                                Playoffs
+                            <option
+                                v-for="stage in eventStages"
+                                :key="stage"
+                                :value="stage"
+                            >
+                                {{ stageLabel(stage) }}
                             </option>
                         </select>
                     </div>
@@ -917,11 +916,7 @@ const seriesFilterStage = ref<string | null>(null);
 
 const filteredSeries = computed(() => {
     let result = series.value;
-    // console.log(
-    //     `Filtering series: team=${seriesFilterTeamId.value} stage=${seriesFilterStage.value}, teams=${teams.value}, result=${result}`,
-    // );
     if (seriesFilterTeamId.value) {
-        // console.log(`Unwrapped Result object: ${JSON.stringify(result)}`);
         result = result.filter(
             (s: any) =>
                 s.teamIds[0] === seriesFilterTeamId.value ||
@@ -964,7 +959,6 @@ onMounted(async () => {
 });
 
 function teamName(teamId: number): string {
-    // console.log("hello, we're looking for", teamId);
     const team =
         teams.value.find((t: any) => t.id === teamId) ??
         allTeams.value.find((t: any) => t.id === teamId);
@@ -1222,12 +1216,38 @@ async function removePlayerFromTeam(player: any) {
 }
 
 //  Create Series State
-const newSeries = ref({
+const newSeries = ref<{
+    team1Id: number;
+    team2Id: number;
+    totalGames: number;
+    stage: EventStage | null;
+}>({
     team1Id: 0,
     team2Id: 0,
     totalGames: 3,
-    stage: EventStage.RegularSeason,
+    stage: null,
 });
+
+// Only offer the stages the selected event actually has
+const eventStages = computed<EventStage[]>(
+    () => selectedEvent.value?.eventStages ?? [],
+);
+
+function stageLabel(stage: string): string {
+    return stage
+        .toLowerCase()
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+}
+
+function openCreateSeries() {
+    const stage = newSeries.value.stage;
+    if (!stage || !eventStages.value.includes(stage)) {
+        newSeries.value.stage = eventStages.value[0] ?? null;
+    }
+    showCreateSeries.value = true;
+}
 
 const team1SearchQuery = ref("");
 const team1DropdownOpen = ref(false);
@@ -1266,6 +1286,10 @@ async function createSeries() {
         modalError.value = "Please select both teams.";
         return;
     }
+    if (!newSeries.value.stage) {
+        modalError.value = "This event has no stages configured.";
+        return;
+    }
 
     modalLoading.value = true;
     modalError.value = "";
@@ -1281,7 +1305,7 @@ async function createSeries() {
             team1Id: 0,
             team2Id: 0,
             totalGames: 3,
-            stage: EventStage.RegularSeason,
+            stage: null,
         };
         await reloadCurrentEvent();
     } catch {
@@ -1300,7 +1324,6 @@ const totalPages = computed(() =>
 );
 
 const paginatedEvents = computed(() => {
-    // console.log(`'${JSON.stringify(events.value)}`);
     const start = currentPage.value * TABS_PER_PAGE;
 
     return events.value.slice(start, start + TABS_PER_PAGE);
