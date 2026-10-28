@@ -1171,7 +1171,11 @@ async function openTeamDetail(team: any) {
     showTeamDetail.value = true;
     try {
         const res = await teamApi.getPlayersOnTeam(team.id);
-        teamPlayers.value = res.data;
+        // Endpoint returns a single TeamWithPlayersDto, despite the generated Array<> type
+        const data = res.data as any;
+        teamPlayers.value = Array.isArray(data)
+            ? (data[0]?.players ?? [])
+            : (data?.players ?? []);
     } catch {
         teamPlayers.value = [];
     } finally {
