@@ -191,6 +191,8 @@
                                         <th>Matchup</th>
                                         <th>Games</th>
                                         <th>Stage</th>
+                                        <th>Status</th>
+                                        <th></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -212,6 +214,28 @@
                                         <td>{{ s.totalGames ?? "-" }}</td>
                                         <td class="series-stage">
                                             {{ s.eventStage ?? "-" }}
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="series-status"
+                                                :class="`series-status-${s.status}`"
+                                                >{{
+                                                    seriesStatusLabel(s.status)
+                                                }}</span
+                                            >
+                                            <span
+                                                v-if="seriesResultLabel(s)"
+                                                class="series-result"
+                                                >{{ seriesResultLabel(s) }}</span
+                                            >
+                                        </td>
+                                        <td>
+                                            <button
+                                                class="small-btn"
+                                                @click="openSeriesStatus(s)"
+                                            >
+                                                Set
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -298,14 +322,6 @@
                                     v-model="newEvent.eventStages"
                                 />
                                 Playoffs
-                            </label>
-                            <label class="checkbox-label">
-                                <input
-                                    type="checkbox"
-                                    :value="EventStage.PromotionRelegation"
-                                    v-model="newEvent.eventStages"
-                                />
-                                Promotion / Relegation
                             </label>
                         </div>
                     </div>
@@ -523,6 +539,99 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Set Series Status Modal -->
+        <div
+            v-if="showSeriesStatus && editingSeries"
+            class="modal-overlay"
+            @click.self="showSeriesStatus = false"
+        >
+            <div class="modal">
+                <h2>Set Series Status</h2>
+                <p class="series-status-matchup">
+                    {{ editingSeries.teamIds.map(teamName).join(" vs ") }}
+                    <span class="series-id">#{{ editingSeries.id }}</span>
+                </p>
+                <form @submit.prevent="saveSeriesStatus">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select v-model="seriesStatusForm.status" required>
+                            <option
+                                v-for="status in Object.values(SeriesStatus)"
+                                :key="status"
+                                :value="status"
+                            >
+                                {{ seriesStatusLabel(status) }}
+                            </option>
+                        </select>
+                    </div>
+                    <div
+                        v-if="seriesStatusForm.status === SeriesStatus.Complete"
+                        class="form-group"
+                    >
+                        <label>Result</label>
+                        <label
+                            v-for="teamId in editingSeries.teamIds"
+                            :key="teamId"
+                            class="radio-label"
+                        >
+                            <input
+                                type="radio"
+                                :value="teamId"
+                                v-model="seriesStatusForm.result"
+                            />
+                            {{ teamName(teamId) }} wins
+                        </label>
+                        <label class="radio-label">
+                            <input
+                                type="radio"
+                                value="doubleLoss"
+                                v-model="seriesStatusForm.result"
+                            />
+                            Double loss
+                        </label>
+                        <label class="radio-label">
+                            <input
+                                type="radio"
+                                value="keep"
+                                v-model="seriesStatusForm.result"
+                            />
+                            Keep current result ({{
+                                seriesResultLabel(editingSeries) || "none"
+                            }})
+                        </label>
+                        <p class="hint">
+                            A winner with no games played records a forfeit.
+                        </p>
+                    </div>
+                    <p
+                        v-else-if="seriesResultLabel(editingSeries)"
+                        class="hint"
+                    >
+                        This clears the recorded result ({{
+                            seriesResultLabel(editingSeries)
+                        }}).
+                    </p>
+                    <p v-if="modalError" class="error">{{ modalError }}</p>
+                    <div class="modal-actions">
+                        <button
+                            type="button"
+                            class="cancel-btn"
+                            @click="showSeriesStatus = false"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="submit-btn"
+                            :disabled="modalLoading"
+                        >
+                            {{ modalLoading ? "Saving..." : "Save" }}
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -831,7 +940,12 @@ import {
     teamApi,
     playerApi,
 } from "../api";
-import { EventStatus, EventStage } from "../dennysClient/api";
+import {
+    EventStatus,
+    EventStage,
+    SeriesStatus,
+    type SeriesDto,
+} from "../dennysClient/api";
 
 //  State
 const isRefreshing = ref(false);
@@ -863,6 +977,7 @@ const showEditState = ref(false);
 const showAddTeam = ref(false);
 const showCreateSeries = ref(false);
 const showTeamDetail = ref(false);
+const showSeriesStatus = ref(false);
 const modalLoading = ref(false);
 const modalError = ref("");
 
@@ -1031,6 +1146,70 @@ async function selectEvent(eventId: number) {
         series.value = (seriesRes.data as any).series ?? [];
     } catch (e) {
         console.error("Series failed:", e);
+    }
+}
+
+//  Series Status
+const editingSeries = ref<SeriesDto | null>(null);
+// `result` is a winning team id, a double loss, or "keep" to send neither and
+// leave the stored result alone.
+const seriesStatusForm = ref<{
+    status: SeriesStatus;
+    result: number | "doubleLoss" | "keep";
+}>({ status: SeriesStatus.NotStarted, result: "keep" });
+
+function seriesStatusLabel(status: SeriesStatus): string {
+    switch (status) {
+        case SeriesStatus.NotStarted:
+            return "Not Started";
+        case SeriesStatus.InProgress:
+            return "In Progress";
+        case SeriesStatus.Complete:
+            return "Complete";
+        case SeriesStatus.Cancelled:
+            return "Cancelled";
+        default:
+            return status;
+    }
+}
+
+function seriesResultLabel(s: SeriesDto): string {
+    if (s.doubleLoss) return "Double loss";
+    if (s.winnerTeamId) return `${teamName(s.winnerTeamId)} won`;
+    return "";
+}
+
+function openSeriesStatus(s: SeriesDto) {
+    editingSeries.value = s;
+    seriesStatusForm.value = {
+        status: s.status,
+        result: s.doubleLoss ? "doubleLoss" : (s.winnerTeamId ?? "keep"),
+    };
+    modalError.value = "";
+    showSeriesStatus.value = true;
+}
+
+async function saveSeriesStatus() {
+    if (!editingSeries.value) return;
+    const { status, result } = seriesStatusForm.value;
+    // Dennys rejects a winner or double loss on any status but COMPLETE.
+    const isComplete = status === SeriesStatus.Complete;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        await eventSeriesApi.patchSeries(editingSeries.value.id, {
+            status,
+            winnerTeamId:
+                isComplete && typeof result === "number" ? result : undefined,
+            doubleLoss: isComplete && result === "doubleLoss" ? true : undefined,
+        });
+        showSeriesStatus.value = false;
+        await reloadCurrentEvent();
+    } catch (e: any) {
+        modalError.value =
+            e?.response?.data?.message ?? "Failed to update series status.";
+    } finally {
+        modalLoading.value = false;
     }
 }
 
@@ -1716,6 +1895,55 @@ th {
     font-size: 0.75rem;
     font-style: italic;
     color: #94a3b8;
+}
+
+.series-status {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    white-space: nowrap;
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.series-status-IN_PROGRESS {
+    background: #e0ecff;
+    color: #1d4ed8;
+}
+
+.series-status-COMPLETE {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.series-status-CANCELLED {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.series-result {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.series-status-matchup {
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: normal;
+}
+
+.hint {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0.25rem 0 0.75rem;
 }
 
 .team-1 {
