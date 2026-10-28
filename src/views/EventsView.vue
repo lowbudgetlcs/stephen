@@ -427,6 +427,38 @@
                         <label>Team Name</label>
                         <input v-model="newTeam.name" required />
                     </div>
+                    <!-- Suggest existing teams with a matching name. Never merge
+                         automatically: the organizer picks one or creates anyway. -->
+                    <div v-if="newTeamNameMatches.length" class="team-match">
+                        <p class="hint">
+                            Existing team{{
+                                newTeamNameMatches.length > 1 ? "s" : ""
+                            }}
+                            with this name:
+                        </p>
+                        <div
+                            v-for="team in newTeamNameMatches"
+                            :key="team.id"
+                            class="selected-team-preview"
+                        >
+                            <span>{{ team.name }}</span>
+                            <span class="team-id">#{{ team.id }}</span>
+                            <span
+                                v-if="isTeamInEvent(team.id)"
+                                class="team-match-note"
+                            >
+                                Already in this event
+                            </span>
+                            <button
+                                v-else
+                                type="button"
+                                class="small-btn team-match-use"
+                                @click="useExistingTeam(team)"
+                            >
+                                Use this team
+                            </button>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label>Logo URL (optional)</label>
                         <input 
@@ -1021,6 +1053,22 @@ const filteredAllTeams = computed(() => {
     );
 });
 
+// Case- and whitespace-insensitive, so "Team  Liquid" matches "team liquid".
+function normalizeTeamName(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+//  Existing teams whose name matches the one typed in "Create New"
+const newTeamNameMatches = computed(() => {
+    const q = normalizeTeamName(newTeam.value.name);
+    if (!q) return [];
+    return allTeams.value.filter((t) => normalizeTeamName(t.name) === q);
+});
+
+function isTeamInEvent(teamId: number): boolean {
+    return teams.value.some((t: any) => t.id === teamId);
+}
+
 //  Team Detail State
 const selectedTeam = ref<any>(null);
 const teamPlayers = ref<any[]>([]);
@@ -1310,6 +1358,16 @@ function selectExistingTeam(team: any) {
     selectedExistingTeams.value.push(team);
     teamSearchQuery.value = "";
     teamDropdownOpen.value = false;
+}
+
+//  Switch from "Create New" to adding the suggested existing team
+function useExistingTeam(team: any) {
+    if (!selectedExistingTeams.value.some((t) => t.id === team.id)) {
+        selectedExistingTeams.value.push(team);
+    }
+    newTeam.value = { name: "", logo: "" };
+    modalError.value = "";
+    addTeamMode.value = "existing";
 }
 
 function removeExistingTeam(teamId: number) {
@@ -2089,6 +2147,20 @@ h3 {
     border-radius: 6px;
     font-size: 0.9rem;
     margin-bottom: 1rem;
+}
+
+.team-match .selected-team-preview {
+    margin-bottom: 0.5rem;
+}
+
+.team-match-use,
+.team-match-note {
+    margin-left: auto;
+}
+
+.team-match-note {
+    font-size: 0.8rem;
+    color: #64748b;
 }
 
 .remove-btn {
