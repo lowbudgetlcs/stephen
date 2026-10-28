@@ -24,6 +24,14 @@
                 + New Event
             </button>
             <button
+                v-if="selectedGroupId !== 'all' && events.length"
+                class="refresh-btn"
+                type="button"
+                @click="copyGroupTeams"
+            >
+                {{ copyLabel }}
+            </button>
+            <button
                 class="refresh-btn"
                 type="button"
                 :disabled="isRefreshing"
@@ -1160,6 +1168,31 @@ async function onGroupChange() {
     } finally {
         loading.value = false;
     }
+}
+
+const copyLabel = ref("Copy Teams");
+
+async function copyGroupTeams() {
+    try {
+        const results = await Promise.all(
+            events.value.map((e: any) => eventApi.getTeamsInEvent(e.id)),
+        );
+        const text = events.value
+            .map((e: any, i: number) =>
+                [
+                    e.name,
+                    ...((results[i]?.data as any)?.teams ?? []).map(
+                        (t: any) => t.name,
+                    ),
+                ].join("\n"),
+            )
+            .join("\n\n");
+        await navigator.clipboard.writeText(text);
+        copyLabel.value = "Copied!";
+    } catch {
+        copyLabel.value = "Copy failed";
+    }
+    setTimeout(() => (copyLabel.value = "Copy Teams"), 2000);
 }
 
 //  Select Event Tab
