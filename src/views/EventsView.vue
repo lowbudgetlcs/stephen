@@ -1173,11 +1173,12 @@ async function onGroupChange() {
 const copyLabel = ref("Copy Teams");
 
 async function copyGroupTeams() {
+    const groupEvents = events.value;
     try {
         const results = await Promise.all(
-            events.value.map((e: any) => eventApi.getTeamsInEvent(e.id)),
+            groupEvents.map((e: any) => eventApi.getTeamsInEvent(e.id)),
         );
-        const text = events.value
+        const text = groupEvents
             .map((e: any, i: number) =>
                 [
                     e.name,
