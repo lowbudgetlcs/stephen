@@ -77,7 +77,7 @@ import { eventApi, eventSeriesApi } from "../api";
 import type {
     EventDto,
     TeamDto,
-    SeriesDto,
+    EventWithSeriesDto,
 } from "../dennysClient/api";
 
 const props = defineProps<{
@@ -86,7 +86,7 @@ const props = defineProps<{
 
 const event = ref<EventDto | null>(null);
 const teams = ref<TeamDto[]>([]);
-const series = ref<SeriesDto[]>([]);
+const series = ref<EventWithSeriesDto[]>([]);
 const loading = ref(true);
 const error = ref("");
 
@@ -100,7 +100,7 @@ onMounted(async () => {
         ]);
         event.value = eventRes.data;
         teams.value = teamsRes.data;
-        series.value = seriesRes.data.series;
+        series.value = seriesRes.data;
     } catch {
         error.value = "Failed to load event data.";
     } finally {
