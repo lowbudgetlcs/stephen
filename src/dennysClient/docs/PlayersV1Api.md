@@ -6,6 +6,7 @@ All URIs are relative to *http://localhost*
 |------------- | ------------- | -------------|
 |[**addPlayer**](#addplayer) | **POST** /api/v1/player | Create a new player|
 |[**getPlayerById**](#getplayerbyid) | **GET** /api/v1/player/{playerId} | Get player by ID|
+|[**getPlayerByIdWithTeams**](#getplayerbyidwithteams) | **GET** /api/v1/player/{playerId}/teams | Get player by ID with teams|
 |[**getPlayers**](#getplayers) | **GET** /api/v1/player | Get all players|
 |[**linkAccountToPlayer**](#linkaccounttoplayer) | **POST** /api/v1/player/{playerId}/accounts | Link a Riot account to a player|
 |[**patchPlayer**](#patchplayer) | **PATCH** /api/v1/player/{playerId} | Patch a player\&#39;s data|
@@ -96,6 +97,58 @@ const { status, data } = await apiInstance.getPlayerById(
 ### Return type
 
 **PlayerDto**
+
+### Authorization
+
+[cookieAuth](../README.md#cookieAuth), [bearerAuth](../README.md#bearerAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+|**200** | Player found |  -  |
+|**404** | Player not found |  -  |
+|**0** | Unexpected error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getPlayerByIdWithTeams**
+> PlayerWithTeamsDto getPlayerByIdWithTeams()
+
+
+### Example
+
+```typescript
+import {
+    PlayersV1Api,
+    Configuration
+} from './api';
+
+const configuration = new Configuration();
+const apiInstance = new PlayersV1Api(configuration);
+
+let playerId: number; //ID of the player to retrieve (default to undefined)
+
+const { status, data } = await apiInstance.getPlayerByIdWithTeams(
+    playerId
+);
+```
+
+### Parameters
+
+|Name | Type | Description  | Notes|
+|------------- | ------------- | ------------- | -------------|
+| **playerId** | [**number**] | ID of the player to retrieve | defaults to undefined|
+
+
+### Return type
+
+**PlayerWithTeamsDto**
 
 ### Authorization
 
