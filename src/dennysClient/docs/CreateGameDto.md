@@ -7,6 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **blueTeamId** | **number** |  | [default to undefined]
 **redTeamId** | **number** |  | [default to undefined]
+**newCode** | **boolean** | Issue a new code even if one is already open for the current game. Still subject to the per-game limit.  | [optional] [default to false]
 
 ## Example
 
@@ -16,6 +17,7 @@ import { CreateGameDto } from './api';
 const instance: CreateGameDto = {
     blueTeamId,
     redTeamId,
+    newCode,
 };
 ```
 
