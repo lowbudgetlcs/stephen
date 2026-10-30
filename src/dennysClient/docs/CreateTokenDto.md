@@ -7,7 +7,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **string** |  | [default to undefined]
 **expiresAt** | **string** |  | [default to undefined]
-**scopes** | **string** | Colon-delimited scope list. | [default to undefined]
+**scopes** | **string** |  | [default to undefined]
 
 ## Example
 

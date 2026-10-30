@@ -4,14 +4,14 @@ All URIs are relative to *http://localhost*
 
 |Method | HTTP request | Description|
 |------------- | ------------- | -------------|
-|[**createToken**](#createtoken) | **POST** /createToken | Issue an API token for the current user.|
+|[**createToken**](#createtoken) | **POST** /createToken | |
 |[**login**](#login) | **POST** /login | Start a session with username/password.|
-|[**logout**](#logout) | **POST** /logout | End the current session.|
+|[**logout**](#logout) | **POST** /logout | |
 
 # **createToken**
 > string createToken()
 
-Create an API token for the currently logged-in user. The token is returned in plaintext exactly once — only its hash is stored. 
+Create an API token for the currently logged-in user.
 
 ### Example
 
