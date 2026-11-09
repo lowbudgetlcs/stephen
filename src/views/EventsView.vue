@@ -859,6 +859,13 @@
                         <button class="small-btn" @click="openPatchTeam">
                             Edit
                         </button>
+                        <button
+                            class="remove-player-btn"
+                            :disabled="modalLoading"
+                            @click="removeTeamFromEvent"
+                        >
+                            Remove from event
+                        </button>
                         <span class="team-id-badge"
                             >ID: {{ selectedTeam?.id }}</span
                         >
@@ -892,6 +899,22 @@
                         </div>
                     </div>
                     <p v-else class="empty">No players on this team.</p>
+                    <div
+                        v-for="o in otherTeams"
+                        :key="`${o.player.id}-${o.team.id}`"
+                        class="selected-team-preview"
+                    >
+                        <span>
+                            {{ o.player.name }} is still on {{ o.team.name }}
+                        </span>
+                        <button
+                            class="small-btn team-match-use"
+                            :disabled="modalLoading"
+                            @click="removeFromOtherTeam(o)"
+                        >
+                            Remove from {{ o.team.name }}
+                        </button>
+                    </div>
                 </template>
 
                 <!-- Add Player to Team -->
@@ -906,7 +929,8 @@
                         <div
                             v-if="
                                 playerDropdownOpen &&
-                                filteredAvailablePlayers.length
+                                (filteredAvailablePlayers.length ||
+                                    canCreatePlayer)
                             "
                             class="autocomplete-dropdown"
                         >
@@ -919,17 +943,17 @@
                                 <span>{{ player.name }}</span>
                                 <span class="player-id">#{{ player.id }}</span>
                             </div>
+                            <div
+                                v-if="canCreatePlayer"
+                                class="autocomplete-item"
+                                @mousedown.prevent="createPlayerAndAdd"
+                            >
+                                <span
+                                    >+ Create "{{ playerSearchQuery.trim() }}"
+                                    and add</span
+                                >
+                            </div>
                         </div>
-                        <p
-                            v-if="
-                                playerDropdownOpen &&
-                                playerSearchQuery &&
-                                !filteredAvailablePlayers.length
-                            "
-                            class="empty autocomplete-empty"
-                        >
-                            No players found.
-                        </p>
                     </div>
                 </div>
 
@@ -1064,6 +1088,11 @@ const filteredAvailablePlayers = computed(() => {
     );
 });
 
+const canCreatePlayer = computed(() => {
+    const q = playerSearchQuery.value.trim().toLowerCase();
+    return !!q && !allPlayers.value.some((p) => p.name.toLowerCase() === q);
+});
+
 const filteredAllTeams = computed(() => {
     const q = teamSearchQuery.value.toLowerCase().trim();
     const selectedIds = selectedExistingTeams.value.map((t) => t.id);
@@ -1096,6 +1125,8 @@ function isTeamInEvent(teamId: number): boolean {
 const selectedTeam = ref<any>(null);
 const teamPlayers = ref<any[]>([]);
 const teamPlayersLoading = ref(false);
+// Other teams in this event that a just-added player is still on (a transfer).
+const otherTeams = ref<{ player: any; team: any }[]>([]);
 
 const seriesFilterTeamId = ref<number | null>(null);
 const seriesFilterStage = ref<string | null>(null);
@@ -1460,6 +1491,7 @@ async function addExistingTeamsToEvent() {
 async function openTeamDetail(team: any) {
     selectedTeam.value = team;
     teamPlayers.value = [];
+    otherTeams.value = [];
     playerSearchQuery.value = "";
     playerDropdownOpen.value = false;
     modalError.value = "";
@@ -1490,6 +1522,71 @@ async function addPlayerToTeam(player: any) {
         teamPlayers.value.push(player);
     } catch {
         modalError.value = "Failed to add player to team.";
+        return;
+    } finally {
+        modalLoading.value = false;
+    }
+    try {
+        const res = await playerApi.getPlayerByIdWithTeams(player.id);
+        const stillOn = (res.data.teams ?? []).filter(
+            (t) =>
+                t.id !== selectedTeam.value?.id &&
+                t.eventId === selectedEventId.value,
+        );
+        otherTeams.value.push(...stillOn.map((team) => ({ player, team })));
+    } catch {
+        // Only a hint; the add itself already succeeded.
+    }
+}
+
+async function createPlayerAndAdd() {
+    const name = playerSearchQuery.value.trim();
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        const res = await playerApi.addPlayer({ name });
+        allPlayers.value.push(res.data);
+        modalLoading.value = false;
+        await addPlayerToTeam(res.data);
+    } catch {
+        modalError.value = "Failed to create player.";
+        modalLoading.value = false;
+    }
+}
+
+async function removeFromOtherTeam(o: { player: any; team: any }) {
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        await teamApi.removePlayerFromTeam(o.team.id, o.player.id);
+        otherTeams.value = otherTeams.value.filter((x) => x !== o);
+    } catch {
+        modalError.value = `Failed to remove ${o.player.name} from ${o.team.name}.`;
+    } finally {
+        modalLoading.value = false;
+    }
+}
+
+async function removeTeamFromEvent() {
+    const team = selectedTeam.value;
+    if (!selectedEventId.value || !team) return;
+    const seriesCount = series.value.filter((s: any) =>
+        s.teamIds.includes(team.id),
+    ).length;
+    const warning = seriesCount
+        ? ` Their ${seriesCount} series stay in the event.`
+        : "";
+    const eventName = selectedEvent.value?.name;
+    if (!confirm(`Remove ${team.name} from ${eventName}?${warning}`)) return;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        await eventApi.removeTeamFromEvent(selectedEventId.value, team.id);
+        showTeamDetail.value = false;
+        await reloadCurrentEvent();
+    } catch (e: any) {
+        modalError.value =
+            e?.response?.data?.message ?? "Failed to remove team from event.";
     } finally {
         modalLoading.value = false;
     }
