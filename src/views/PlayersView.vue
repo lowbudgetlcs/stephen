@@ -54,9 +54,9 @@
                                     <td>
                                         <button
                                             class="small-btn"
-                                            @click="openRenamePlayer(player)"
+                                            @click="detailPlayerId = player.id"
                                         >
-                                            Rename
+                                            View / Edit
                                         </button>
                                     </td>
                                 </tr>
@@ -108,49 +108,19 @@
             </div>
         </div>
 
-        <!-- Rename Player Modal -->
-        <div
-            v-if="showRenamePlayer"
-            class="modal-overlay"
-            @click.self="showRenamePlayer = false"
-        >
-            <div class="modal">
-                <h2>Rename Player</h2>
-                <form @submit.prevent="renamePlayer">
-                    <div class="form-group">
-                        <label>Current Name</label>
-                        <input :value="selectedPlayer?.name" disabled />
-                    </div>
-                    <div class="form-group">
-                        <label>New Name</label>
-                        <input v-model="renameValue" required />
-                    </div>
-                    <p v-if="modalError" class="error">{{ modalError }}</p>
-                    <div class="modal-actions">
-                        <button
-                            type="button"
-                            class="cancel-btn"
-                            @click="showRenamePlayer = false"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            class="submit-btn"
-                            :disabled="modalLoading"
-                        >
-                            {{ modalLoading ? "Saving..." : "Save" }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <PlayerDetailModal
+            v-if="detailPlayerId"
+            :player-id="detailPlayerId"
+            @close="detailPlayerId = null"
+            @changed="loadPlayers"
+        />
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import SkeletonRows from "../components/SkeletonRows.vue";
+import PlayerDetailModal from "../components/PlayerDetailModal.vue";
 import { playerApi } from "../api";
 
 //  State
@@ -161,13 +131,11 @@ const error = ref("");
 
 //  Modal State
 const showCreatePlayer = ref(false);
-const showRenamePlayer = ref(false);
 const modalLoading = ref(false);
 const modalError = ref("");
 
 const newPlayerName = ref("");
-const selectedPlayer = ref<any>(null);
-const renameValue = ref("");
+const detailPlayerId = ref<number | null>(null);
 
 //  Filtered Players
 const filteredPlayers = computed(() => {
@@ -212,31 +180,6 @@ async function createPlayer() {
         await loadPlayers();
     } catch {
         modalError.value = "Failed to create player.";
-    } finally {
-        modalLoading.value = false;
-    }
-}
-
-//  Rename Player
-function openRenamePlayer(player: any) {
-    selectedPlayer.value = player;
-    renameValue.value = player.name;
-    modalError.value = "";
-    showRenamePlayer.value = true;
-}
-
-async function renamePlayer() {
-    if (!selectedPlayer.value) return;
-    modalLoading.value = true;
-    modalError.value = "";
-    try {
-        await playerApi.patchPlayer(selectedPlayer.value.id, {
-            name: renameValue.value,
-        });
-        showRenamePlayer.value = false;
-        await loadPlayers();
-    } catch {
-        modalError.value = "Failed to rename player.";
     } finally {
         modalLoading.value = false;
     }

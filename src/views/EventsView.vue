@@ -883,12 +883,16 @@
                             :key="player.id"
                             class="player-item"
                         >
-                            <div class="player-info">
+                            <button
+                                type="button"
+                                class="player-info player-link"
+                                @click="detailPlayerId = player.id"
+                            >
                                 <span class="player-name">{{
                                     player.name
                                 }}</span>
                                 <span class="player-id">#{{ player.id }}</span>
-                            </div>
+                            </button>
                             <button
                                 class="remove-player-btn"
                                 :disabled="modalLoading"
@@ -966,6 +970,13 @@
             </div>
         </div>
 
+        <PlayerDetailModal
+            v-if="detailPlayerId"
+            :player-id="detailPlayerId"
+            @close="detailPlayerId = null"
+            @changed="selectedTeam && openTeamDetail(selectedTeam)"
+        />
+
         <!-- Patch Team Modal -->
         <div
             v-if="showPatchTeam"
@@ -1012,6 +1023,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import SkeletonRows from "../components/SkeletonRows.vue";
+import PlayerDetailModal from "../components/PlayerDetailModal.vue";
 import {
     eventApi,
     eventGroupEventsApi,
@@ -1127,6 +1139,7 @@ const teamPlayers = ref<any[]>([]);
 const teamPlayersLoading = ref(false);
 // Other teams in this event that a just-added player is still on (a transfer).
 const otherTeams = ref<{ player: any; team: any }[]>([]);
+const detailPlayerId = ref<number | null>(null);
 
 const seriesFilterTeamId = ref<number | null>(null);
 const seriesFilterStage = ref<string | null>(null);
@@ -2500,6 +2513,21 @@ h3 {
 
 .player-name {
     font-weight: 600;
+}
+
+.player-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.player-link:hover .player-name {
+    color: #2563eb;
+    text-decoration: underline;
 }
 
 .player-id {
