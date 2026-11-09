@@ -39,6 +39,9 @@ body {
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: #f8fafc;
     color: #1e293b;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
 }
 
 .app-layout {
@@ -56,5 +59,13 @@ body {
 /* The sidebar is position: fixed, so reserve its 200px here. */
 .main-content:not(.no-sidebar) {
     padding-left: calc(200px + 2rem);
+}
+
+/* Matches the breakpoint where Sidebar.vue becomes a top bar. */
+@media (max-width: 768px) {
+    .main-content,
+    .main-content:not(.no-sidebar) {
+        padding: 1rem;
+    }
 }
 </style>

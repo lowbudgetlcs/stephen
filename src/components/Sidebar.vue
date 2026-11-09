@@ -155,4 +155,42 @@ async function handleLogout() {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+    .sidebar {
+        position: sticky;
+        z-index: 50;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .sidebar-header,
+    .sidebar-footer {
+        border: none;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .sidebar-nav {
+        flex-direction: row;
+        padding: 0;
+        overflow-x: auto;
+    }
+
+    .nav-item.active {
+        border-left: none;
+        box-shadow: inset 0 -3px #3b82f6;
+    }
+
+    .user-info {
+        display: none;
+    }
+
+    .logout-btn {
+        width: auto;
+        padding: 0.4rem 0.75rem;
+        white-space: nowrap;
+    }
+}
 </style>
