@@ -41,8 +41,7 @@
             </button>
         </div>
 
-        <p v-if="loading" class="status">Loading...</p>
-        <p v-else-if="error" class="status error">{{ error }}</p>
+        <p v-if="error && !loading" class="status error">{{ error }}</p>
 
         <template v-else-if="selectedGroupId">
             <!-- Event Tabs -->
@@ -66,7 +65,12 @@
                     >
                         {{ event.name }}
                     </button>
-                    <p v-if="!events.length" class="status">No events found.</p>
+                    <template v-if="!events.length">
+                        <button v-if="loading" class="tab" disabled>
+                            Loading…
+                        </button>
+                        <p v-else class="status">No events found.</p>
+                    </template>
                 </div>
 
                 <button
@@ -84,7 +88,7 @@
             </div>
 
             <!-- Event Content -->
-            <div v-if="selectedEvent" class="event-content">
+            <div v-if="loading || selectedEvent" class="event-content">
                 <div class="left-col">
                     <!-- Details Panel -->
                     <section class="panel">
@@ -92,6 +96,7 @@
                             <h2>Event Details</h2>
                             <button
                                 class="small-btn"
+                                :disabled="loading"
                                 @click="showEditState = true"
                             >
                                 Change Status
@@ -101,19 +106,21 @@
                             <div class="detail-item">
                                 <span class="label">Name</span>
                                 <span class="value">{{
-                                    selectedEvent.name
+                                    selectedEvent?.name ?? "…"
                                 }}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="label">Status</span>
                                 <span class="value">{{
-                                    selectedEvent.status ?? "-"
+                                    selectedEvent
+                                        ? (selectedEvent.status ?? "-")
+                                        : "…"
                                 }}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="label">ID</span>
                                 <span class="value">{{
-                                    selectedEvent.id
+                                    selectedEvent?.id ?? "…"
                                 }}</span>
                             </div>
                         </div>
@@ -123,12 +130,17 @@
                     <section class="panel">
                         <div class="panel-header">
                             <h2>Teams</h2>
-                            <button class="small-btn" @click="openAddTeamModal">
+                            <button
+                                class="small-btn"
+                                :disabled="loading"
+                                @click="openAddTeamModal"
+                            >
                                 + Add Team
                             </button>
                         </div>
                         <div class="panel-body">
-                            <div v-if="teams.length" class="team-list">
+                            <SkeletonRows v-if="loading" :rows="8" />
+                            <div v-else-if="teams.length" class="team-list">
                                 <div
                                     v-for="team in teams"
                                     :key="team.id"
@@ -167,6 +179,7 @@
                                     </select>
                                     <button
                                         class="small-btn"
+                                        :disabled="loading"
                                         @click="openCreateSeries"
                                     >
                                         + New Series
@@ -193,7 +206,8 @@
                             </div>
                         </div>
                         <div class="panel-body">
-                            <table v-if="filteredSeries.length">
+                            <SkeletonRows v-if="loading" :rows="12" />
+                            <table v-else-if="filteredSeries.length">
                                 <thead>
                                     <tr>
                                         <th>Matchup</th>
@@ -845,6 +859,13 @@
                         <button class="small-btn" @click="openPatchTeam">
                             Edit
                         </button>
+                        <button
+                            class="remove-player-btn"
+                            :disabled="modalLoading"
+                            @click="removeTeamFromEvent"
+                        >
+                            Remove from event
+                        </button>
                         <span class="team-id-badge"
                             >ID: {{ selectedTeam?.id }}</span
                         >
@@ -878,6 +899,22 @@
                         </div>
                     </div>
                     <p v-else class="empty">No players on this team.</p>
+                    <div
+                        v-for="o in otherTeams"
+                        :key="`${o.player.id}-${o.team.id}`"
+                        class="selected-team-preview"
+                    >
+                        <span>
+                            {{ o.player.name }} is still on {{ o.team.name }}
+                        </span>
+                        <button
+                            class="small-btn team-match-use"
+                            :disabled="modalLoading"
+                            @click="removeFromOtherTeam(o)"
+                        >
+                            Remove from {{ o.team.name }}
+                        </button>
+                    </div>
                 </template>
 
                 <!-- Add Player to Team -->
@@ -892,7 +929,8 @@
                         <div
                             v-if="
                                 playerDropdownOpen &&
-                                filteredAvailablePlayers.length
+                                (filteredAvailablePlayers.length ||
+                                    canCreatePlayer)
                             "
                             class="autocomplete-dropdown"
                         >
@@ -905,17 +943,17 @@
                                 <span>{{ player.name }}</span>
                                 <span class="player-id">#{{ player.id }}</span>
                             </div>
+                            <div
+                                v-if="canCreatePlayer"
+                                class="autocomplete-item"
+                                @mousedown.prevent="createPlayerAndAdd"
+                            >
+                                <span
+                                    >+ Create "{{ playerSearchQuery.trim() }}"
+                                    and add</span
+                                >
+                            </div>
                         </div>
-                        <p
-                            v-if="
-                                playerDropdownOpen &&
-                                playerSearchQuery &&
-                                !filteredAvailablePlayers.length
-                            "
-                            class="empty autocomplete-empty"
-                        >
-                            No players found.
-                        </p>
                     </div>
                 </div>
 
@@ -973,6 +1011,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
+import SkeletonRows from "../components/SkeletonRows.vue";
 import {
     eventApi,
     eventGroupEventsApi,
@@ -1049,6 +1088,11 @@ const filteredAvailablePlayers = computed(() => {
     );
 });
 
+const canCreatePlayer = computed(() => {
+    const q = playerSearchQuery.value.trim().toLowerCase();
+    return !!q && !allPlayers.value.some((p) => p.name.toLowerCase() === q);
+});
+
 const filteredAllTeams = computed(() => {
     const q = teamSearchQuery.value.toLowerCase().trim();
     const selectedIds = selectedExistingTeams.value.map((t) => t.id);
@@ -1081,6 +1125,8 @@ function isTeamInEvent(teamId: number): boolean {
 const selectedTeam = ref<any>(null);
 const teamPlayers = ref<any[]>([]);
 const teamPlayersLoading = ref(false);
+// Other teams in this event that a just-added player is still on (a transfer).
+const otherTeams = ref<{ player: any; team: any }[]>([]);
 
 const seriesFilterTeamId = ref<number | null>(null);
 const seriesFilterStage = ref<string | null>(null);
@@ -1118,8 +1164,8 @@ async function refreshData() {
         await onGroupChange();
     } catch {
         error.value = "Failed to load initial data.";
-    } finally {
         loading.value = false;
+    } finally {
         isRefreshing.value = false;
     }
 }
@@ -1161,11 +1207,13 @@ async function onGroupChange() {
         }
 
         if (events.value.length > 0) {
+            // selectEvent clears loading, so a newer tab click keeps its skeleton.
             await selectEvent(events.value[0].id);
+        } else {
+            loading.value = false;
         }
     } catch {
         error.value = "Failed to load events.";
-    } finally {
         loading.value = false;
     }
 }
@@ -1206,28 +1254,36 @@ async function selectEvent(eventId: number) {
     teams.value = [];
     series.value = [];
     error.value = "";
+    loading.value = true;
 
-    try {
-        const eventRes = await eventApi.getEventById(eventId);
-        selectedEvent.value = eventRes.data;
-    } catch (e) {
-        console.error("Event details failed:", e);
+    const [eventRes, teamsRes, seriesRes] = await Promise.allSettled([
+        eventApi.getEventById(eventId),
+        eventApi.getTeamsInEvent(eventId),
+        eventSeriesApi.getSeriesInEvent(eventId),
+    ]);
+
+    // The user moved on while this loaded; the newer selection owns the page.
+    if (selectedEventId.value !== eventId) return;
+
+    loading.value = false;
+
+    if (eventRes.status === "rejected") {
+        console.error("Event details failed:", eventRes.reason);
         error.value = "Failed to load event details.";
         return;
     }
+    selectedEvent.value = eventRes.value.data;
 
-    try {
-        const teamsRes = await eventApi.getTeamsInEvent(eventId);
-        teams.value = (teamsRes.data as any).teams ?? [];
-    } catch (e) {
-        console.error("Teams failed:", e);
+    if (teamsRes.status === "fulfilled") {
+        teams.value = (teamsRes.value.data as any).teams ?? [];
+    } else {
+        console.error("Teams failed:", teamsRes.reason);
     }
 
-    try {
-        const seriesRes = await eventSeriesApi.getSeriesInEvent(eventId);
-        series.value = (seriesRes.data as any).series ?? [];
-    } catch (e) {
-        console.error("Series failed:", e);
+    if (seriesRes.status === "fulfilled") {
+        series.value = (seriesRes.value.data as any).series ?? [];
+    } else {
+        console.error("Series failed:", seriesRes.reason);
     }
 }
 
@@ -1435,6 +1491,7 @@ async function addExistingTeamsToEvent() {
 async function openTeamDetail(team: any) {
     selectedTeam.value = team;
     teamPlayers.value = [];
+    otherTeams.value = [];
     playerSearchQuery.value = "";
     playerDropdownOpen.value = false;
     modalError.value = "";
@@ -1465,6 +1522,71 @@ async function addPlayerToTeam(player: any) {
         teamPlayers.value.push(player);
     } catch {
         modalError.value = "Failed to add player to team.";
+        return;
+    } finally {
+        modalLoading.value = false;
+    }
+    try {
+        const res = await playerApi.getPlayerByIdWithTeams(player.id);
+        const stillOn = (res.data.teams ?? []).filter(
+            (t) =>
+                t.id !== selectedTeam.value?.id &&
+                t.eventId === selectedEventId.value,
+        );
+        otherTeams.value.push(...stillOn.map((team) => ({ player, team })));
+    } catch {
+        // Only a hint; the add itself already succeeded.
+    }
+}
+
+async function createPlayerAndAdd() {
+    const name = playerSearchQuery.value.trim();
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        const res = await playerApi.addPlayer({ name });
+        allPlayers.value.push(res.data);
+        modalLoading.value = false;
+        await addPlayerToTeam(res.data);
+    } catch {
+        modalError.value = "Failed to create player.";
+        modalLoading.value = false;
+    }
+}
+
+async function removeFromOtherTeam(o: { player: any; team: any }) {
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        await teamApi.removePlayerFromTeam(o.team.id, o.player.id);
+        otherTeams.value = otherTeams.value.filter((x) => x !== o);
+    } catch {
+        modalError.value = `Failed to remove ${o.player.name} from ${o.team.name}.`;
+    } finally {
+        modalLoading.value = false;
+    }
+}
+
+async function removeTeamFromEvent() {
+    const team = selectedTeam.value;
+    if (!selectedEventId.value || !team) return;
+    const seriesCount = series.value.filter((s: any) =>
+        s.teamIds.includes(team.id),
+    ).length;
+    const warning = seriesCount
+        ? ` Their ${seriesCount} series stay in the event.`
+        : "";
+    const eventName = selectedEvent.value?.name;
+    if (!confirm(`Remove ${team.name} from ${eventName}?${warning}`)) return;
+    modalLoading.value = true;
+    modalError.value = "";
+    try {
+        await eventApi.removeTeamFromEvent(selectedEventId.value, team.id);
+        showTeamDetail.value = false;
+        await reloadCurrentEvent();
+    } catch (e: any) {
+        modalError.value =
+            e?.response?.data?.message ?? "Failed to remove team from event.";
     } finally {
         modalLoading.value = false;
     }
@@ -1665,6 +1787,8 @@ async function submitPatchTeam() {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    width: 100%;
+    max-width: 1280px;
 }
 
 /*  Top Bar  */
@@ -1813,7 +1937,7 @@ async function submitPatchTeam() {
 /*  Two-Column Layout  */
 .event-content {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.25rem;
     align-items: start;
 }
@@ -1872,8 +1996,13 @@ async function submitPatchTeam() {
     flex-shrink: 0;
 }
 
-.small-btn:hover {
+.small-btn:hover:not(:disabled) {
     background: #cbd5e1;
+}
+
+.small-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /*  Details Grid  */
@@ -2302,6 +2431,7 @@ h3 {
 }
 
 .filter-select {
+    width: 8rem;
     padding: 0.25rem 1.25rem 0.25rem 0.5rem;
     border: 1px solid #e2e8f0;
     border-radius: 4px;

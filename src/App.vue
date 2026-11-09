@@ -19,6 +19,8 @@ const showSidebar = computed(() => route.name !== "login");
 
 <style>
 #app {
+    width: 100%;
+    max-width: none;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -49,5 +51,10 @@ body {
     justify-content: center;
     align-items: flex-start;
     padding: 2rem;
+}
+
+/* The sidebar is position: fixed, so reserve its 200px here. */
+.main-content:not(.no-sidebar) {
+    padding-left: calc(200px + 2rem);
 }
 </style>
