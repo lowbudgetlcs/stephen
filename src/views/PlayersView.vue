@@ -507,4 +507,40 @@ th {
     width: 100%;
     max-width: 900px;
 }
+
+/*  Responsive  */
+.top-bar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.group-selector {
+    flex: 1 1 280px;
+    max-width: 420px;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-overlay {
+    padding: 1rem;
+}
+
+.modal {
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+    .panel-header,
+    .panel-body {
+        padding: 0.75rem;
+    }
+
+    .modal {
+        padding: 1.25rem;
+    }
+}
 </style>

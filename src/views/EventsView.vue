@@ -2102,4 +2102,65 @@ h3 {
     align-items: center;
     gap: 0.5rem;
 }
+
+/*  Responsive  */
+.top-bar,
+.panel-header,
+.header-actions,
+.modal-header-row {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+}
+
+.event-tabs {
+    overflow-x: auto;
+}
+
+.panel-body {
+    overflow-x: auto;
+}
+
+.modal-overlay {
+    padding: 1rem;
+}
+
+.modal {
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+/* Two columns get too narrow for the series table on portrait monitors. */
+@media (max-width: 1100px) {
+    .event-content {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .top-bar {
+        justify-content: flex-start;
+    }
+
+    .tab {
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+    }
+
+    .panel-header,
+    .panel-body {
+        padding: 0.75rem;
+    }
+
+    /* Games and Stage columns; Stage still has its own filter. */
+    th:nth-child(2),
+    td:nth-child(2),
+    th:nth-child(3),
+    td:nth-child(3) {
+        display: none;
+    }
+
+    .modal {
+        padding: 1.25rem;
+    }
+}
 </style>
