@@ -56,7 +56,8 @@ const { status, data } = await apiInstance.createRiotAccountDto(
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 |**201** | Riot account created |  -  |
-|**400** | Invalid PUUID format |  -  |
+|**400** | Malformed request body |  -  |
+|**422** | Invalid PUUID. A PUUID must be exactly 78 base64url characters (letters, digits, \&#39;-\&#39; and \&#39;_\&#39;); anything else is rejected before Riot is called. Riot rejecting the value also surfaces here.  |  -  |
 |**404** | Riot account not found from Riot API |  -  |
 |**409** | Riot account already exists |  -  |
 |**0** | Unexpected error |  -  |

@@ -240,11 +240,18 @@ import {
 const configuration = new Configuration();
 const apiInstance = new TeamsV1Api(configuration);
 
-const { status, data } = await apiInstance.getTeams();
+let name: string; //Filter teams matching this name. Partial completions are allowed. (optional) (default to undefined)
+
+const { status, data } = await apiInstance.getTeams(
+    name
+);
 ```
 
 ### Parameters
-This endpoint does not have any parameters.
+
+|Name | Type | Description  | Notes|
+|------------- | ------------- | ------------- | -------------|
+| **name** | [**string**] | Filter teams matching this name. Partial completions are allowed. | (optional) defaults to undefined|
 
 
 ### Return type
