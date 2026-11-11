@@ -16,22 +16,22 @@
             </button>
         </div>
 
-        <p v-if="loading" class="status">Loading...</p>
-        <p v-else-if="error" class="status error">{{ error }}</p>
+        <p v-if="error" class="status error">{{ error }}</p>
 
         <template v-else>
             <div class="players-layout">
                 <section class="panel">
                     <div class="panel-header">
                         <h2>Players</h2>
-                        <span class="player-count">
+                        <span v-if="!loading" class="player-count">
                             {{ filteredPlayers.length }} player{{
                                 filteredPlayers.length !== 1 ? "s" : ""
                             }}
                         </span>
                     </div>
                     <div class="panel-body">
-                        <table v-if="filteredPlayers.length">
+                        <SkeletonRows v-if="loading" :rows="12" />
+                        <table v-else-if="filteredPlayers.length">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -150,6 +150,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import SkeletonRows from "../components/SkeletonRows.vue";
 import { playerApi } from "../api";
 
 //  State
@@ -505,5 +506,41 @@ th {
     gap: 1rem;
     width: 100%;
     max-width: 900px;
+}
+
+/*  Responsive  */
+.top-bar {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.group-selector {
+    flex: 1 1 280px;
+    max-width: 420px;
+}
+
+.search-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.modal-overlay {
+    padding: 1rem;
+}
+
+.modal {
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+    .panel-header,
+    .panel-body {
+        padding: 0.75rem;
+    }
+
+    .modal {
+        padding: 1.25rem;
+    }
 }
 </style>
